@@ -7,7 +7,7 @@ from streamlit_calendar import calendar
 # ==========================================
 # 1. DATABASE & ADMIN CONFIGURATION
 # ==========================================
-ADMIN_PASSCODE = "2026" 
+ADMIN_PASSCODE = st.secrets["ADMIN_PASSCODE"] 
 
 @st.cache_resource
 def init_supabase() -> Client:
