@@ -23,6 +23,7 @@ st.set_page_config(page_title="RPF Room Bookings", layout="wide")
 st.logo("🏢", size="large")
 
 # Custom Responsive CSS injection
+# Custom Responsive CSS injection
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
@@ -46,6 +47,20 @@ st.markdown("""
             padding: 20px !important;
         }
         
+        /* 👁️ CRISP VISIBILITY PATCH FOR INPUT FIELDS */
+        div[data-testid="stForm"] input, 
+        div[data-testid="stForm"] select, 
+        div[data-testid="stForm"] div[role="combobox"] {
+            color: #1e293b !important;
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+        }
+        
+        /* Ensures dropdown text and calendar picker text stays dark */
+        div[data-baseweb="select"] *, div[data-baseweb="calendar"] * {
+            color: #1e293b !important;
+        }
+        
         .sms-btn {
             display: inline-block;
             background-color: #25d366;
@@ -64,7 +79,6 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
-
 st.markdown('<h1 class="main-title">RPF Room Bookings</h1>', unsafe_allow_html=True)
 
 ROOMS = [
