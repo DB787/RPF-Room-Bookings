@@ -7,7 +7,7 @@ from streamlit_calendar import calendar
 # ==========================================
 # 1. DATABASE & ADMIN CONFIGURATION
 # ==========================================
-ADMIN_PASSCODE = st.secrets["ADMIN_PASSCODE"] 
+ADMIN_PASSCODE = st.secrets["ADMIN_PASSCODE"]
 
 @st.cache_resource
 def init_supabase() -> Client:
@@ -109,6 +109,16 @@ def get_bookings():
     except:
         return []
 
+# Session State engines for flashing persistent actions across refreshes
+if "user_success_msg" in st.session_state:
+    st.success(st.session_state.user_success_msg, icon="🎉")
+    st.balloons()
+    del st.session_state.user_success_msg
+
+if "admin_action_msg" in st.session_state:
+    st.info(st.session_state.admin_action_msg, icon="🔔")
+    del st.session_state.admin_action_msg
+
 # ==========================================
 # 3. SIDEBAR: OPERATOR GATEWAY
 # ==========================================
@@ -118,10 +128,10 @@ with st.sidebar:
     
     passcode_input = st.text_input("Portal Key", type="password", placeholder="Enter authorization key...")
     if passcode_input == ADMIN_PASSCODE:
-        st.success("Operator Access Granted")
+        st.success("Operator Access Granted", icon="🔑")
         show_admin = True
     elif passcode_input != "":
-        st.error("Access Denied")
+        st.error("Access Denied", icon="🛑")
 
 # ==========================================
 # MAIN INTERFACE LAYOUT
@@ -138,7 +148,6 @@ else:
 with tab1:
     raw_bookings = get_bookings()
     
-    # Let users choose their viewport style or default to automated presentation
     view_type = st.radio(
         "Select Calendar Layout Style:",
         ["📱 Mobile Agenda List (Best for Phones)", "🖥️ Full Calendar Grid (Best for Desktop/Tablets)"],
@@ -147,7 +156,7 @@ with tab1:
     
     st.markdown("---")
 
-    # ---- MODE A: MOBILE AGENDA LIST (CLEAN, LARGE, BULLETPROOF TEXT CARDS) ----
+    # ---- MODE A: MOBILE AGENDA LIST ----
     if view_type == "📱 Mobile Agenda List (Best for Phones)":
         st.subheader("🗓️ Scheduled Allocations")
         
@@ -159,9 +168,7 @@ with tab1:
         if not day_events:
             st.info("🟢 No active room allocations scheduled for this date. Available all day!")
         else:
-            # Sort events cleanly by start time
             day_events = sorted(day_events, key=lambda x: x['start_time'])
-            
             for b in day_events:
                 display_title = b['user_name'].split(" (")[0] if " (" in b['user_name'] else b['user_name']
                 try:
@@ -171,7 +178,6 @@ with tab1:
                 except:
                     time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
                 
-                # Render a thick container card rearranged to Event -> Time -> Room
                 st.markdown(f"""
                     <div style="
                         background-color: #f8fafc;
@@ -193,7 +199,7 @@ with tab1:
                     </div>
                 """, unsafe_allow_html=True)
 
-    # ---- MODE B: STANDARD FULL CALENDAR GRID FOR LARGE DESKTOPS ----
+    # ---- MODE B: STANDARD FULL CALENDAR GRID ----
     else:
         calendar_events = []
         for b in raw_bookings:
@@ -205,7 +211,6 @@ with tab1:
             except:
                 time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
                 
-            # Rearranged text label directly inside the FullCalendar generation line
             full_event_label = f"{display_title}\n⏰ Time: {time_display}\n📍 Room: {b['room_name']}"
             
             calendar_events.append({
@@ -229,7 +234,6 @@ with tab1:
             "height": "auto",
             "slotDuration": "00:30:00",    
             "snapDuration": "00:30:00",
-            # Converts the left axis timeline labels inside the calendar grid to 12h AM/PM
             "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
         }
         
@@ -274,10 +278,10 @@ with tab1:
                     "status": "Pending"
                 }
                 supabase.table("bookings").insert(data).execute()
-                st.success("🎉 Request submitted successfully! It is now awaiting Admin approval.")
+                st.session_state.user_success_msg = f"SUCCESS! Your request for '{booking_name}' has been safely submitted. The system administrators will review it shortly."
                 st.rerun()
             else:
-                st.error("Please fill out all fields before submitting.")
+                st.error("Submission Failed: Please make sure all text boxes are filled out before submitting.", icon="❌")
 
 # ------------------------------------------
 # VIEW 2: HIDDEN MANAGER CONTROLS
@@ -327,7 +331,7 @@ if show_admin and tab2 is not None:
                                 "end_time": time_mapping[edit_end]
                             }
                             supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
-                            st.toast("✨ Live event updated successfully!", icon="✅")
+                            st.session_state.admin_action_msg = f"📝 MODIFIED: The live allocation parameters for '{edit_name}' have been updated successfully."
                             st.rerun()
 
         st.markdown("---")
@@ -365,7 +369,7 @@ if show_admin and tab2 is not None:
                         current_date += datetime.timedelta(weeks=1)
                     
                     supabase.table("bookings").insert(batch_data).execute()
-                    st.toast(f"✨ Published {weeks_count} recurring weeks!", icon="🔄")
+                    st.session_state.admin_action_msg = f"🔁 BATCH GENERATED: Successfully created and published {weeks_count} consecutive weekly blocks for '{rec_title}'."
                     st.rerun()
 
         st.markdown("---")
@@ -397,6 +401,7 @@ if show_admin and tab2 is not None:
                     encoded_text = urllib.parse.quote(sms_body)
                     
                     sms_url = f"sms:{clean_phone}&body={encoded_text}"
+                    st.success("💬 Message Payload Generated! Tap the button below to transfer this text to your phone's SMS messaging system.", icon="✉️")
                     st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Launch Text Message on Phone</a>', unsafe_allow_html=True)
 
         st.markdown("---")
@@ -424,9 +429,11 @@ if show_admin and tab2 is not None:
                     col_app, col_rej, _ = st.columns([1, 1, 4])
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
+                        st.session_state.admin_action_msg = f"✅ APPROVED: '{pb['user_name']}' has been officially confirmed and added to the public calendar."
                         st.rerun()
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
+                        st.session_state.admin_action_msg = f"❌ REJECTED: Removed request from '{pb['user_name']}' from the pending review pool."
                         st.rerun()
                 st.markdown("---")
 
@@ -451,4 +458,5 @@ if show_admin and tab2 is not None:
                     with col_del:
                         if st.button("Delete ❌", key=f"del_{ab['id']}"):
                             supabase.table("bookings").delete().eq("id", ab['id']).execute()
+                            st.session_state.admin_action_msg = f"🗑️ REMOVED: Successfully deleted the allocation for '{ab['user_name']}' from the live database."
                             st.rerun()
