@@ -109,14 +109,9 @@ def get_bookings():
     except:
         return []
 
-# Session State engines for flashing persistent actions across refreshes
-if "user_success_msg" in st.session_state:
-    st.success(st.session_state.user_success_msg, icon="🎉")
-    st.balloons()
-    del st.session_state.user_success_msg
-
+# Persistent system alerts rendered via unobtrusive slide-out toasts
 if "admin_action_msg" in st.session_state:
-    st.info(st.session_state.admin_action_msg, icon="🔔")
+    st.toast(st.session_state.admin_action_msg, icon="⚙️")
     del st.session_state.admin_action_msg
 
 # ==========================================
@@ -252,6 +247,9 @@ with tab1:
     st.markdown("---")
     st.subheader("Submit a New Booking Request")
     
+    # Empty placeholder slot contextually sitting right at the base of the form
+    user_alert_anchor = st.empty()
+    
     with st.form("request_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -278,8 +276,8 @@ with tab1:
                     "status": "Pending"
                 }
                 supabase.table("bookings").insert(data).execute()
-                st.session_state.user_success_msg = f"SUCCESS! Your request for '{booking_name}' has been safely submitted. The system administrators will review it shortly."
-                st.rerun()
+                # Renders the alert directly into the form container boundary space
+                st.success(f"🎉 SUCCESS! Your request for '{booking_name}' has been safely submitted. The system administrators will review it shortly.")
             else:
                 st.error("Submission Failed: Please make sure all text boxes are filled out before submitting.", icon="❌")
 
@@ -331,7 +329,7 @@ if show_admin and tab2 is not None:
                                 "end_time": time_mapping[edit_end]
                             }
                             supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
-                            st.session_state.admin_action_msg = f"📝 MODIFIED: The live allocation parameters for '{edit_name}' have been updated successfully."
+                            st.session_state.admin_action_msg = f"📝 Modified live allocation parameters for '{edit_name}'."
                             st.rerun()
 
         st.markdown("---")
@@ -369,7 +367,7 @@ if show_admin and tab2 is not None:
                         current_date += datetime.timedelta(weeks=1)
                     
                     supabase.table("bookings").insert(batch_data).execute()
-                    st.session_state.admin_action_msg = f"🔁 BATCH GENERATED: Successfully created and published {weeks_count} consecutive weekly blocks for '{rec_title}'."
+                    st.session_state.admin_action_msg = f"🔁 Published {weeks_count} consecutive weekly blocks for '{rec_title}'."
                     st.rerun()
 
         st.markdown("---")
@@ -401,7 +399,7 @@ if show_admin and tab2 is not None:
                     encoded_text = urllib.parse.quote(sms_body)
                     
                     sms_url = f"sms:{clean_phone}&body={encoded_text}"
-                    st.success("💬 Message Payload Generated! Tap the button below to transfer this text to your phone's SMS messaging system.", icon="✉️")
+                    st.success("✉️ SMS configuration payload loaded! Use the device gateway link below.", icon="👍")
                     st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Launch Text Message on Phone</a>', unsafe_allow_html=True)
 
         st.markdown("---")
@@ -429,11 +427,11 @@ if show_admin and tab2 is not None:
                     col_app, col_rej, _ = st.columns([1, 1, 4])
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
-                        st.session_state.admin_action_msg = f"✅ APPROVED: '{pb['user_name']}' has been officially confirmed and added to the public calendar."
+                        st.session_state.admin_action_msg = f"✅ Approved and published request from '{pb['user_name']}'."
                         st.rerun()
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
-                        st.session_state.admin_action_msg = f"❌ REJECTED: Removed request from '{pb['user_name']}' from the pending review pool."
+                        st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}'."
                         st.rerun()
                 st.markdown("---")
 
@@ -458,5 +456,5 @@ if show_admin and tab2 is not None:
                     with col_del:
                         if st.button("Delete ❌", key=f"del_{ab['id']}"):
                             supabase.table("bookings").delete().eq("id", ab['id']).execute()
-                            st.session_state.admin_action_msg = f"🗑️ REMOVED: Successfully deleted the allocation for '{ab['user_name']}' from the live database."
+                            st.session_state.admin_action_msg = f"🗑️ Deleted live allocation for '{ab['user_name']}'."
                             st.rerun()
