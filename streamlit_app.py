@@ -46,18 +46,28 @@ st.markdown("""
             padding: 20px !important;
         }
         
-        /* 👁️ CRISP VISIBILITY PATCH FOR INPUT FIELDS */
+        /* ⚪ UNIFORM WHITE BACKGROUND FOR EVERY FIELD IN THE FORM */
         div[data-testid="stForm"] input, 
         div[data-testid="stForm"] select, 
-        div[data-testid="stForm"] div[role="combobox"] {
+        div[data-testid="stForm"] div[role="combobox"],
+        div[data-testid="stForm"] div[data-baseweb="select"] {
             color: #1e293b !important;
             background-color: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
         }
         
-        /* Ensures dropdown text and calendar picker text stays dark */
-        div[data-baseweb="select"] *, div[data-baseweb="calendar"] * {
+        /* Ensures dropdown text and calendar picker text inside lists stays dark */
+        div[data-baseweb="select"] *, 
+        div[data-baseweb="calendar"] *,
+        ul[role="listbox"] li,
+        div[role="listbox"] * {
             color: #1e293b !important;
+        }
+        
+        /* Cleans up the background of the active select element wrapper */
+        div[data-baseweb="select"] > div {
+            background-color: #ffffff !important;
         }
         
         .sms-btn {
