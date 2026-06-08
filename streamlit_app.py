@@ -132,7 +132,7 @@ with st.sidebar:
 # MAIN INTERFACE LAYOUT
 # ==========================================
 if show_admin:
-    tab1, tab2 = st.tabs(["📅 Schedule & Requests", "⚙️ Manager Controls"])
+    tab1, tab2 = st.tabs(["📅 Weekly Schedule & Requests", "⚙️ Booking Admin"])
 else:
     tab1 = st.container()
     tab2 = None
@@ -161,7 +161,7 @@ with tab1:
         day_events = [b for b in raw_bookings if b['booking_date'] == selected_date_str]
         
         if not day_events:
-            st.info("🟢 No active room allocations scheduled for this date. Available all day!")
+            st.info("🟢 There are currently no room bookings for this date!")
         else:
             day_events = sorted(day_events, key=lambda x: x['start_time'])
             for b in day_events:
@@ -259,8 +259,8 @@ with tab1:
             room_selection = st.selectbox("Select Room", ROOMS)
         with col2:
             booking_date = st.date_input("Date (DD/MM/YYYY)", datetime.date.today(), format="DD/MM/YYYY")
-            start_label = st.selectbox("Start Time (24h)", time_labels, index=9) 
-            end_label = st.selectbox("End Time (24h)", time_labels, index=10) 
+            start_label = st.selectbox("Start Time", time_labels, index=9) 
+            end_label = st.selectbox("End Time", time_labels, index=10) 
             
         submit_btn = st.form_submit_button("Submit Request")
         
@@ -277,7 +277,7 @@ with tab1:
                 }
                 supabase.table("bookings").insert(data).execute()
                 # Renders the alert directly into the form container boundary space
-                st.success(f"🎉 SUCCESS! Your request for '{booking_name}' has been safely submitted. The system administrators will review it shortly.")
+                st.success(f"🎉 SUCCESS! Your request for '{booking_name}' has been safely submitted. You will be contacted shortly.")
             else:
                 st.error("Submission Failed: Please make sure all text boxes are filled out before submitting.", icon="❌")
 
@@ -286,11 +286,11 @@ with tab1:
 # ------------------------------------------
 if show_admin and tab2 is not None:
     with tab2:
-        st.subheader("Manager Portal")
+        st.subheader("Admin Tools")
         
         # Tool 1: Live Tweak Engine
-        st.markdown("### 📝 Edit & Tweak Live Events")
-        with st.expander("Click to open Live Tweak Engine"):
+        st.markdown("### 📝 Edit Live Events")
+        with st.expander("Click to edit an event"):
             all_live = supabase.table("bookings").select("*").eq("status", "Approved").order("booking_date").execute()
             live_list = all_live.data if all_live else []
             
@@ -314,11 +314,11 @@ if show_admin and tab2 is not None:
                         
                         col_e1, col_e2 = st.columns(2)
                         with col_e1:
-                            edit_start = st.selectbox("New Start Time (24h)", time_labels, index=time_labels.index(curr_start_lbl))
+                            edit_start = st.selectbox("New Start Time", time_labels, index=time_labels.index(curr_start_lbl))
                         with col_e2:
-                            edit_end = st.selectbox("New End Time (24h)", time_labels, index=time_labels.index(curr_end_lbl))
+                            edit_end = st.selectbox("New End Time", time_labels, index=time_labels.index(curr_end_lbl))
                             
-                        save_edits = st.form_submit_button("Save Layout Tweaks")
+                        save_edits = st.form_submit_button("Save Layout Edits")
                         
                         if save_edits:
                             update_payload = {
@@ -373,7 +373,7 @@ if show_admin and tab2 is not None:
         st.markdown("---")
         
         # Tool 3: Quick SMS Text Dispatcher
-        st.markdown("### 💬 Quick SMS Text Dispatcher")
+        st.markdown("### 💬 Message Requesters")
         with st.expander("Click to open Quick Text Portal"):
             all_current = supabase.table("bookings").select("*").execute()
             current_data = all_current.data if all_current else []
@@ -399,7 +399,7 @@ if show_admin and tab2 is not None:
                     encoded_text = urllib.parse.quote(sms_body)
                     
                     sms_url = f"sms:{clean_phone}&body={encoded_text}"
-                    st.success("✉️ SMS configuration payload loaded! Use the device gateway link below.", icon="👍")
+                    st.success("✉️ SMS sent!", icon="👍")
                     st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Launch Text Message on Phone</a>', unsafe_allow_html=True)
 
         st.markdown("---")
