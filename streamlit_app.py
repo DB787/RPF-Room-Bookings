@@ -23,7 +23,6 @@ st.set_page_config(page_title="RPF Room Bookings", layout="wide")
 st.logo("🏢", size="large")
 
 # Custom Responsive CSS injection
-# Custom Responsive CSS injection
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
@@ -79,6 +78,7 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
 st.markdown('<h1 class="main-title">RPF Room Bookings</h1>', unsafe_allow_html=True)
 
 ROOMS = [
