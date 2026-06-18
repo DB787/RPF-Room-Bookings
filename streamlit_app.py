@@ -165,39 +165,64 @@ with tab1:
     
     view_type = st.radio(
         "Select Calendar Layout Style:",
-        ["📱 Mobile Agenda List (Best for Phones)", "🖥️ Full Calendar Grid (Best for Desktop/Tablets)"],
+        ["📱 Mobile Weekly List (Full Week)", "🖥️ Full Calendar Grid (Best for Desktop)"],
         horizontal=True
     )
     
     st.markdown("---")
 
-    if view_type == "📱 Mobile Agenda List (Best for Phones)":
-        st.subheader("🗓️ Scheduled Allocations")
-        filter_date = st.date_input("Filter Agenda by Date:", datetime.date.today(), format="DD/MM/YYYY")
-        selected_date_str = str(filter_date)
-        day_events = [b for b in raw_bookings if b['booking_date'] == selected_date_str]
+    # 📱 NEW OPTIMIZED PHONE VIEW: THE FULL WEEK FEED
+    if view_type == "📱 Mobile Weekly List (Full Week)":
+        st.subheader("📋 Upcoming Week at a Glance")
         
-        if not day_events:
-            st.info("🟢 No active room allocations scheduled for this date. Available all day!")
-        else:
-            day_events = sorted(day_events, key=lambda x: x['start_time'])
-            for b in day_events:
-                display_title = b['user_name'].split(" (")[0] if " (" in b['user_name'] else b['user_name']
-                try:
-                    st_time = datetime.datetime.strptime(b['start_time'], "%H:%M:%S").strftime("%I:%M %p")
-                    en_time = datetime.datetime.strptime(b['end_time'], "%H:%M:%S").strftime("%I:%M %p")
-                    time_display = f"{st_time} - {en_time}"
-                except:
-                    time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
+        # Get a list of the next 7 days starting from today
+        base_date = datetime.date.today()
+        upcoming_days = [base_date + datetime.timedelta(days=i) for i in range(7)]
+        
+        has_any_bookings = False
+        
+        # Loop through each of the 7 days and display its bookings
+        for target_date in upcoming_days:
+            target_date_str = str(target_date)
+            day_events = [b for b in raw_bookings if b['booking_date'] == target_date_str]
+            
+            # Format the header for each day (e.g., "Friday (June 19)")
+            day_header = target_date.strftime("%A (%b %d)")
+            if target_date == base_date:
+                day_header = "⭐️ TODAY — " + day_header
+            elif target_date == base_date + datetime.timedelta(days=1):
+                day_header = "➡️ TOMORROW — " + day_header
                 
-                st.markdown(f"""
-                    <div style="background-color: #f8fafc; border-left: 6px solid #82a6d7; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                        <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">👤 Event: {display_title}</div>
-                        <div style="font-size: 1.05rem; font-weight: 600; color: #475569;">⏰ {time_display}</div>
-                        <div style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin-top: 2px;">📍 Room: {b['room_name']}</div>
-                    </div>
-                """, unsafe_allow_html=True)
+            # Only display the day header if there are actually events scheduled
+            if day_events:
+                has_any_bookings = True
+                st.markdown(f"### {day_header}")
+                
+                # Sort listings chronologically by start time
+                day_events = sorted(day_events, key=lambda x: x['start_time'])
+                for b in day_events:
+                    display_title = b['user_name'].split(" (")[0] if " (" in b['user_name'] else b['user_name']
+                    try:
+                        st_time = datetime.datetime.strptime(b['start_time'], "%H:%M:%S").strftime("%I:%M %p")
+                        en_time = datetime.datetime.strptime(b['end_time'], "%H:%M:%S").strftime("%I:%M %p")
+                        time_display = f"{st_time} - {en_time}"
+                    except:
+                        time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
+                    
+                    st.markdown(f"""
+                        <div style="background-color: #f8fafc; border-left: 6px solid #82a6d7; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                            <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">👤 Event: {display_title}</div>
+                            <div style="font-size: 1.05rem; font-weight: 600; color: #475569;">⏰ Time: {time_display}</div>
+                            <div style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin-top: 2px;">📍 Room: {b['room_name']}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("<br>", unsafe_allow_html=True) # Adds a clean visual gap between days
+                
+        if not has_any_bookings:
+            st.info("🟢 Perfect scheduling! There are absolutely no room allocations booked for the next 7 days.")
 
+    # 🖥️ FULL LARGE CANVAS GRID INTERFACE (Stays exactly as you like it)
     else:
         calendar_events = []
         for b in raw_bookings:
@@ -221,33 +246,19 @@ with tab1:
                 "textColor": "#1e293b"
             })
             
-       # Determine the visual grid columns based on the user's view choice
-        if view_type == "📱 Mobile Agenda List (Best for Phones)":
-            # (Your mobile agenda code stays exactly how it is)
-            pass
-        else:
-            # 🖥️ DESKTOP / TABLET FULL WEEK CONFIGURATION
-            calendar_options = {
-                "initialView": "timeGridWeek",
-                "headerToolbar": {"left": "prev,next today", "center": "title", "right": "timeGridWeek,timeGridDay"},
-                "firstDay": 1,              
-                "locale": "en-gb",          
-                "slotMinTime": "00:00:00",   
-                "slotMaxTime": "24:00:00",   
-                "allDaySlot": False,
-                "height": "auto",
-                "slotDuration": "00:30:00",    
-                "snapDuration": "00:30:00",
-                "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True},
-                
-                # 📱 MOBILE COLUMN BREAKPOINT RULES
-                "views": {
-                    "timeGridWeek": {
-                        "dayCount": 3, # Drop down to 3 days on narrow mobile web panels
-                        "titleFormat": {"year": "numeric", "month": "short", "day": "numeric"}
-                    }
-                }
-            }
+        calendar_options = {
+            "initialView": "timeGridWeek",
+            "headerToolbar": {"left": "prev,next today", "center": "title", "right": "timeGridWeek,timeGridDay"},
+            "firstDay": 1,              
+            "locale": "en-gb",          
+            "slotMinTime": "00:00:00",   
+            "slotMaxTime": "24:00:00",   
+            "allDaySlot": False,
+            "height": "auto",
+            "slotDuration": "00:30:00",    
+            "snapDuration": "00:30:00",
+            "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
+        }
         
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
@@ -257,13 +268,6 @@ with tab1:
             .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 1px !important; overflow: visible !important; }
             .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.1 !important; white-space: pre-wrap !important; word-break: break-word !important; padding: 1px 2px !important; }
             .fc-event-time { display: none !important; }
-            /* Compress column text spacing on small interfaces */
-            .fc .fc-timegrid-slot-label { height: 40px !important; }
-            .fc-event-main { font-size: 10px !important; padding: 2px !important; }
-            
-            /* Add horizontal scrolling capability for extreme device screens */
-            .fc-view-harness { overflow-x: auto !important; }
-            .fc-timegrid { min-width: 320px !important; }
         """
         
         calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
