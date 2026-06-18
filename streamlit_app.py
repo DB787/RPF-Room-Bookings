@@ -171,26 +171,36 @@ with tab1:
     
     st.markdown("---")
 
-    # 📱 NEW OPTIMIZED PHONE VIEW: THE FULL WEEK FEED
+    # 📱 NEW OPTIMIZED PHONE VIEW: THE FULL WEEK FEED + DATE JUMPER
     if view_type == "📱 Mobile Weekly List (Full Week)":
-        st.subheader("📋 Upcoming Week at a Glance")
         
-        # Get a list of the next 7 days starting from today
-        base_date = datetime.date.today()
-        upcoming_days = [base_date + datetime.timedelta(days=i) for i in range(7)]
+        # 🗓️ THE DATE JUMPER BOX
+        st.markdown("#### 🔍 Jump to a Custom Week")
+        start_date_selection = st.date_input(
+            "Show 7 days starting from:", 
+            datetime.date.today(), 
+            format="DD/MM/YYYY",
+            key="mobile_date_picker"
+        )
+        
+        st.markdown("---")
+        st.subheader("📋 Scheduled Allocations")
+        
+        # Calculate 7 consecutive days starting from whatever date you picked above
+        upcoming_days = [start_date_selection + datetime.timedelta(days=i) for i in range(7)]
         
         has_any_bookings = False
         
-        # Loop through each of the 7 days and display its bookings
+        # Loop through each of the selected 7 days and pull data
         for target_date in upcoming_days:
             target_date_str = str(target_date)
             day_events = [b for b in raw_bookings if b['booking_date'] == target_date_str]
             
-            # Format the header for each day (e.g., "Friday (June 19)")
-            day_header = target_date.strftime("%A (%b %d)")
-            if target_date == base_date:
+            # Format the header for each day nicely
+            day_header = target_date.strftime("%A (%b %d, %Y)")
+            if target_date == datetime.date.today():
                 day_header = "⭐️ TODAY — " + day_header
-            elif target_date == base_date + datetime.timedelta(days=1):
+            elif target_date == datetime.date.today() + datetime.timedelta(days=1):
                 day_header = "➡️ TOMORROW — " + day_header
                 
             # Only display the day header if there are actually events scheduled
@@ -217,12 +227,12 @@ with tab1:
                         </div>
                     """, unsafe_allow_html=True)
                 
-                st.markdown("<br>", unsafe_allow_html=True) # Adds a clean visual gap between days
+                st.markdown("<br>", unsafe_allow_html=True) # Clean visual gap
                 
         if not has_any_bookings:
-            st.info("🟢 Perfect scheduling! There are absolutely no room allocations booked for the next 7 days.")
+            st.info(f"🟢 No room allocations booked for the 7-day window starting {start_date_selection.strftime('%d/%m/%Y')}.")
 
-    # 🖥️ FULL LARGE CANVAS GRID INTERFACE (Stays exactly as you like it)
+    # 🖥️ FULL LARGE CANVAS GRID INTERFACE (Stays completely untouched)
     else:
         calendar_events = []
         for b in raw_bookings:
