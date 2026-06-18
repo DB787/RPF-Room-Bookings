@@ -8,6 +8,8 @@ from streamlit_calendar import calendar
 # 1. DATABASE & ADMIN CONFIGURATION
 # ==========================================
 ADMIN_PASSCODE = st.secrets["ADMIN_PASSCODE"]
+# System automatically looks for a USER_PASSCODE in secrets, defaults to 'RPF2026' if not set
+USER_PASSCODE = st.secrets.get("USER_PASSCODE", "RPF2026")
 
 @st.cache_resource
 def init_supabase() -> Client:
@@ -46,7 +48,6 @@ st.markdown("""
             padding: 20px !important;
         }
         
-        /* ⚪ UNIFORM WHITE BACKGROUND FOR EVERY FIELD IN THE FORM */
         div[data-testid="stForm"] input, 
         div[data-testid="stForm"] select, 
         div[data-testid="stForm"] div[role="combobox"],
@@ -57,7 +58,6 @@ st.markdown("""
             border-radius: 8px !important;
         }
         
-        /* Ensures dropdown text and calendar picker text inside lists stays dark */
         div[data-baseweb="select"] *, 
         div[data-baseweb="calendar"] *,
         ul[role="listbox"] li,
@@ -65,7 +65,6 @@ st.markdown("""
             color: #1e293b !important;
         }
         
-        /* Cleans up the background of the active select element wrapper */
         div[data-baseweb="select"] > div {
             background-color: #ffffff !important;
         }
@@ -82,13 +81,34 @@ st.markdown("""
             margin-top: 10px;
         }
 
-        /* 📱 Responsive view container rules */
         @media screen and (max-width: 768px) {
             .main-title { font-size: 1.8rem; }
         }
     </style>
 """, unsafe_allow_html=True)
 
+# ------------------------------------------
+# 🔒 MASTER PRIVACY SECURITY GATEWAY
+# ------------------------------------------
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.markdown('<h1 class="main-title">🔐 Private Portal Access</h1>', unsafe_allow_html=True)
+    st.write("This application is private. Please enter your community's access passcode to view and request room bookings.")
+    
+    entry_key = st.text_input("Enter Passcode:", type="password", placeholder="Type password here...")
+    if st.button("Unlock Application"):
+        if entry_key == USER_PASSCODE or entry_key == ADMIN_PASSCODE:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("Incorrect Passcode. Access denied.", icon="🛑")
+    st.stop()  # Rigidly stops execution here if password isn't verified yet!
+
+# ==========================================
+# 3. LIVE APPLICATION (ONLY SEEN IF LOGGED IN)
+# ==========================================
 st.markdown('<h1 class="main-title">RPF Room Bookings</h1>', unsafe_allow_html=True)
 
 ROOMS = [
@@ -109,13 +129,12 @@ def get_bookings():
     except:
         return []
 
-# Persistent system alerts rendered via unobtrusive slide-out toasts
 if "admin_action_msg" in st.session_state:
     st.toast(st.session_state.admin_action_msg, icon="⚙️")
     del st.session_state.admin_action_msg
 
 # ==========================================
-# 3. SIDEBAR: OPERATOR GATEWAY
+# 4. SIDEBAR: OPERATOR GATEWAY
 # ==========================================
 with st.sidebar:
     st.markdown("### 🔒 Staff Gateway")
@@ -127,19 +146,20 @@ with st.sidebar:
         show_admin = True
     elif passcode_input != "":
         st.error("Access Denied", icon="🛑")
+        
+    if st.button("🚪 Log Out of App"):
+        st.session_state.authenticated = False
+        st.rerun()
 
 # ==========================================
 # MAIN INTERFACE LAYOUT
 # ==========================================
 if show_admin:
-    tab1, tab2 = st.tabs(["📅 Weekly Schedule & Requests", "⚙️ Booking Admin"])
+    tab1, tab2 = st.tabs(["📅 Schedule & Requests", "⚙️ Manager Controls"])
 else:
     tab1 = st.container()
     tab2 = None
 
-# ------------------------------------------
-# VIEW 1: DUAL-DISPLAY LAYOUT (MOBILE FRIENDLY)
-# ------------------------------------------
 with tab1:
     raw_bookings = get_bookings()
     
@@ -151,17 +171,14 @@ with tab1:
     
     st.markdown("---")
 
-    # ---- MODE A: MOBILE AGENDA LIST ----
     if view_type == "📱 Mobile Agenda List (Best for Phones)":
         st.subheader("🗓️ Scheduled Allocations")
-        
         filter_date = st.date_input("Filter Agenda by Date:", datetime.date.today(), format="DD/MM/YYYY")
         selected_date_str = str(filter_date)
-        
         day_events = [b for b in raw_bookings if b['booking_date'] == selected_date_str]
         
         if not day_events:
-            st.info("🟢 There are currently no room bookings for this date!")
+            st.info("🟢 No active room allocations scheduled for this date. Available all day!")
         else:
             day_events = sorted(day_events, key=lambda x: x['start_time'])
             for b in day_events:
@@ -174,27 +191,13 @@ with tab1:
                     time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
                 
                 st.markdown(f"""
-                    <div style="
-                        background-color: #f8fafc;
-                        border-left: 6px solid #82a6d7;
-                        padding: 15px;
-                        border-radius: 8px;
-                        margin-bottom: 12px;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                    ">
-                        <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">
-                            👤 Event: {display_title}
-                        </div>
-                        <div style="font-size: 1.05rem; font-weight: 600; color: #475569;">
-                            ⏰ {time_display}
-                        </div>
-                        <div style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin-top: 2px;">
-                            📍 Room: {b['room_name']}
-                        </div>
+                    <div style="background-color: #f8fafc; border-left: 6px solid #82a6d7; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="font-size: 1.15rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">👤 Event: {display_title}</div>
+                        <div style="font-size: 1.05rem; font-weight: 600; color: #475569;">⏰ {time_display}</div>
+                        <div style="font-size: 0.95rem; font-weight: 500; color: #64748b; margin-top: 2px;">📍 Room: {b['room_name']}</div>
                     </div>
                 """, unsafe_allow_html=True)
 
-    # ---- MODE B: STANDARD FULL CALENDAR GRID ----
     else:
         calendar_events = []
         for b in raw_bookings:
@@ -247,9 +250,6 @@ with tab1:
     st.markdown("---")
     st.subheader("Submit a New Booking Request")
     
-    # Empty placeholder slot contextually sitting right at the base of the form
-    user_alert_anchor = st.empty()
-    
     with st.form("request_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
@@ -259,8 +259,8 @@ with tab1:
             room_selection = st.selectbox("Select Room", ROOMS)
         with col2:
             booking_date = st.date_input("Date (DD/MM/YYYY)", datetime.date.today(), format="DD/MM/YYYY")
-            start_label = st.selectbox("Start Time", time_labels, index=9) 
-            end_label = st.selectbox("End Time", time_labels, index=10) 
+            start_label = st.selectbox("Start Time (24h)", time_labels, index=9) 
+            end_label = st.selectbox("End Time (24h)", time_labels, index=10) 
             
         submit_btn = st.form_submit_button("Submit Request")
         
@@ -276,21 +276,19 @@ with tab1:
                     "status": "Pending"
                 }
                 supabase.table("bookings").insert(data).execute()
-                # Renders the alert directly into the form container boundary space
-                st.success(f"🎉 SUCCESS! Your request for '{booking_name}' has been safely submitted. You will be contacted shortly.")
+                st.success(f"🎉 SUCCESS! Your request for '{booking_name}' has been safely submitted.")
             else:
-                st.error("Submission Failed: Please make sure all text boxes are filled out before submitting.", icon="❌")
+                st.error("Submission Failed: Please fill out all boxes.", icon="❌")
 
 # ------------------------------------------
-# VIEW 2: HIDDEN MANAGER CONTROLS
+# MANAGER CONTROLS (TAB 2)
 # ------------------------------------------
 if show_admin and tab2 is not None:
     with tab2:
-        st.subheader("Admin Tools")
+        st.subheader("Manager Portal")
         
-        # Tool 1: Live Tweak Engine
-        st.markdown("### 📝 Edit Live Events")
-        with st.expander("Click to edit an event"):
+        st.markdown("### 📝 Edit & Tweak Live Events")
+        with st.expander("Click to open Live Tweak Engine"):
             all_live = supabase.table("bookings").select("*").eq("status", "Approved").order("booking_date").execute()
             live_list = all_live.data if all_live else []
             
@@ -304,7 +302,6 @@ if show_admin and tab2 is not None:
                     target_event = event_options[selected_event_key]
                     
                     with st.form(f"edit_form_{target_event['id']}"):
-                        st.markdown("**Update Values Below:**")
                         edit_name = st.text_input("Event Name / Contact String", value=target_event['user_name'])
                         edit_room = st.selectbox("Assigned Room", ROOMS, index=ROOMS.index(target_event['room_name']))
                         edit_date = st.date_input("Scheduled Date", datetime.datetime.strptime(target_event['booking_date'], "%Y-%m-%d"), format="DD/MM/YYYY")
@@ -314,12 +311,11 @@ if show_admin and tab2 is not None:
                         
                         col_e1, col_e2 = st.columns(2)
                         with col_e1:
-                            edit_start = st.selectbox("New Start Time", time_labels, index=time_labels.index(curr_start_lbl))
+                            edit_start = st.selectbox("New Start Time (24h)", time_labels, index=time_labels.index(curr_start_lbl))
                         with col_e2:
-                            edit_end = st.selectbox("New End Time", time_labels, index=time_labels.index(curr_end_lbl))
+                            edit_end = st.selectbox("New End Time (24h)", time_labels, index=time_labels.index(curr_end_lbl))
                             
-                        save_edits = st.form_submit_button("Save Layout Edits")
-                        
+                        save_edits = st.form_submit_button("Save Layout Tweaks")
                         if save_edits:
                             update_payload = {
                                 "user_name": edit_name,
@@ -329,12 +325,11 @@ if show_admin and tab2 is not None:
                                 "end_time": time_mapping[edit_end]
                             }
                             supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
-                            st.session_state.admin_action_msg = f"📝 Modified live allocation parameters for '{edit_name}'."
+                            st.session_state.admin_action_msg = f"📝 Modified parameters for '{edit_name}'."
                             st.rerun()
 
         st.markdown("---")
         
-        # Tool 2: Recurring Blocks
         st.markdown("### 🔁 Add Recurring Schedule Block")
         with st.expander("Click to open Recurring Event Creator"):
             with st.form("recurring_form"):
@@ -350,7 +345,6 @@ if show_admin and tab2 is not None:
                     rec_end_lbl = st.selectbox("End Time (24h)", time_labels, index=10, key="rec_end_time")
                 
                 submit_recurring = st.form_submit_button("Generate All Recurring Blocks")
-                
                 if submit_recurring and rec_title:
                     batch_data = []
                     current_date = start_date
@@ -367,75 +361,39 @@ if show_admin and tab2 is not None:
                         current_date += datetime.timedelta(weeks=1)
                     
                     supabase.table("bookings").insert(batch_data).execute()
-                    st.session_state.admin_action_msg = f"🔁 Published {weeks_count} consecutive weekly blocks for '{rec_title}'."
+                    st.session_state.admin_action_msg = f"🔁 Published {weeks_count} weekly blocks for '{rec_title}'."
                     st.rerun()
 
         st.markdown("---")
         
-        # Tool 3: Quick SMS Text Dispatcher
-        st.markdown("### 💬 Message Requesters")
-        with st.expander("Click to open Quick Text Portal"):
-            all_current = supabase.table("bookings").select("*").execute()
-            current_data = all_current.data if all_current else []
-            
-            if not current_data:
-                st.info("No bookings found to contact.")
-            else:
-                contact_options = {
-                    f"{ev['booking_date']} | {ev['user_name']} ({ev['user_email']})": ev 
-                    for ev in current_data if ev['user_email'] and ev['user_email'] != "Admin Blockout"
-                }
-                
-                if not contact_options:
-                    st.info("No custom user phone entries found to text.")
-                else:
-                    selected_contact = st.selectbox("Who do you want to message?", list(contact_options.keys()))
-                    sms_target = contact_options[selected_contact]
-                    
-                    default_msg = f"Hi, regarding your booking for '{sms_target['user_name'].split(' (')[0]}' on {sms_target['booking_date']}: "
-                    sms_body = st.text_area("Write your text message here:", value=default_msg)
-                    
-                    clean_phone = "".join(filter(str.isdigit, sms_target['user_email']))
-                    encoded_text = urllib.parse.quote(sms_body)
-                    
-                    sms_url = f"sms:{clean_phone}&body={encoded_text}"
-                    st.success("✉️ SMS sent!", icon="👍")
-                    st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Launch Text Message on Phone</a>', unsafe_allow_html=True)
-
-        st.markdown("---")
-        
-        # Tool 4: Pending Approvals
         st.markdown("### 📋 Pending Approval Requests")
         pending_res = supabase.table("bookings").select("*").eq("status", "Pending").execute()
         pending_bookings = pending_res.data if pending_res else []
         
         if not pending_bookings:
-            st.info("No pending booking requests at the moment.")
+            st.info("No pending booking requests.")
         else:
             for pb in pending_bookings:
                 with st.container():
                     st.markdown(f"#### {pb['user_name']} ({pb['room_name']})")
-                    st.text(f"📱 Phone Number: {pb['user_email']}") 
-                    
                     try:
                         parsed_date = datetime.datetime.strptime(pb['booking_date'], "%Y-%m-%d").strftime("%d/%m/%Y")
                     except:
                         parsed_date = pb['booking_date']
-                        
                     st.text(f"📅 Date & Time: {parsed_date} | {pb['start_time'][:5]} - {pb['end_time'][:5]}")
                     
                     col_app, col_rej, _ = st.columns([1, 1, 4])
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
-                        st.session_state.admin_action_msg = f"✅ Approved and published request from '{pb['user_name']}'."
+                        st.session_state.admin_action_msg = f"✅ Approved request from '{pb['user_name']}'."
                         st.rerun()
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
                         st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}'."
                         st.rerun()
-                st.markdown("---")
 
-        # Tool 5: Deletion Panel
+        st.markdown("---")
+        
         st.markdown("### 🗑️ Delete or Cancel Live Events")
         with st.expander("Click to view full calendar cleanup deck"):
             all_approved = supabase.table("bookings").select("*").eq("status", "Approved").order("booking_date").execute()
