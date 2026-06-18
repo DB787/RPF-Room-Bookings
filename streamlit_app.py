@@ -221,19 +221,33 @@ with tab1:
                 "textColor": "#1e293b"
             })
             
-        calendar_options = {
-            "initialView": "timeGridWeek",
-            "headerToolbar": {"left": "prev,next today", "center": "title", "right": "timeGridWeek,timeGridDay"},
-            "firstDay": 1,              
-            "locale": "en-gb",          
-            "slotMinTime": "00:00:00",   
-            "slotMaxTime": "24:00:00",   
-            "allDaySlot": False,
-            "height": "auto",
-            "slotDuration": "00:30:00",    
-            "snapDuration": "00:30:00",
-            "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
-        }
+       # Determine the visual grid columns based on the user's view choice
+        if view_type == "📱 Mobile Agenda List (Best for Phones)":
+            # (Your mobile agenda code stays exactly how it is)
+            pass
+        else:
+            # 🖥️ DESKTOP / TABLET FULL WEEK CONFIGURATION
+            calendar_options = {
+                "initialView": "timeGridWeek",
+                "headerToolbar": {"left": "prev,next today", "center": "title", "right": "timeGridWeek,timeGridDay"},
+                "firstDay": 1,              
+                "locale": "en-gb",          
+                "slotMinTime": "00:00:00",   
+                "slotMaxTime": "24:00:00",   
+                "allDaySlot": False,
+                "height": "auto",
+                "slotDuration": "00:30:00",    
+                "snapDuration": "00:30:00",
+                "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True},
+                
+                # 📱 MOBILE COLUMN BREAKPOINT RULES
+                "views": {
+                    "timeGridWeek": {
+                        "dayCount": 3, # Drop down to 3 days on narrow mobile web panels
+                        "titleFormat": {"year": "numeric", "month": "short", "day": "numeric"}
+                    }
+                }
+            }
         
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
