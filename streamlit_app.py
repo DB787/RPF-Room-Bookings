@@ -257,6 +257,13 @@ with tab1:
             .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 1px !important; overflow: visible !important; }
             .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.1 !important; white-space: pre-wrap !important; word-break: break-word !important; padding: 1px 2px !important; }
             .fc-event-time { display: none !important; }
+            /* Compress column text spacing on small interfaces */
+            .fc .fc-timegrid-slot-label { height: 40px !important; }
+            .fc-event-main { font-size: 10px !important; padding: 2px !important; }
+            
+            /* Add horizontal scrolling capability for extreme device screens */
+            .fc-view-harness { overflow-x: auto !important; }
+            .fc-timegrid { min-width: 320px !important; }
         """
         
         calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
