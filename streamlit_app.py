@@ -1,6 +1,5 @@
 import streamlit as st
 import datetime
-import urllib.parse
 from supabase import create_client, Client
 from streamlit_calendar import calendar
 
@@ -14,20 +13,6 @@ def init_supabase() -> Client:
     return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
 
 supabase = init_supabase()
-
-# ==========================================
-# FREE MESSAGING LINK UTILITIES
-# ==========================================
-def create_whatsapp_link(phone_number, message):
-    """Generates a free web/app link to send a pre-filled WhatsApp message."""
-    clean_phone = "".join(filter(str.isdigit, str(phone_number)))
-    encoded_message = urllib.parse.quote(message)
-    return f"https://wa.me/{clean_phone}?text={encoded_message}"
-
-def create_imessage_link(phone_number, message):
-    """Generates an sms: link that opens iMessage/SMS with text pre-filled."""
-    encoded_message = urllib.parse.quote(message)
-    return f"sms:{phone_number}&body={encoded_message}"
 
 # ==========================================
 # 2. PAGE CONFIGURATION & VISUAL THEME
@@ -172,6 +157,7 @@ with tab1:
             target_date_str = str(target_date)
             day_events = [b for b in raw_bookings if b['booking_date'] == target_date_str]
             
+            # STATED COMPLIANCE: Forces day headers to explicitly layout as DD/MM/YYYY
             day_header = target_date.strftime("%A (%d/%m/%Y)")
             if target_date == datetime.date.today():
                 day_header = "⭐️ TODAY — " + day_header
@@ -182,6 +168,7 @@ with tab1:
                 has_any_bookings = True
                 st.markdown(f"### {day_header}")
                 
+                # Apply multi-tiered sorting parameters
                 day_events = sort_events_engine(day_events)
                 
                 for b in day_events:
@@ -252,6 +239,7 @@ with tab1:
             .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
             .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
             
+            /* 🛠️ FORCE TRUE SIDE-BY-SIDE SIDE ALLOCATION (NO OVERLAPPING) */
             .fc-timegrid-slots td { position: relative; }
             .fc-timegrid-events-container { margin: 0 !important; }
             
@@ -263,6 +251,7 @@ with tab1:
                 box-sizing: border-box !important;
             }
             
+            /* This ensures FullCalendar scales them nicely next to each other instead of stacking layered cards */
             .fc-timegrid-event {
                 opacity: 0.98 !important;
             }
@@ -292,6 +281,7 @@ with tab1:
             contact_phone = st.text_input("Your Phone Number")
             room_selection = st.selectbox("Select Room", AVAILABLE_ROOMS)
         with col2:
+            # COMPLIANCE: Date picker UI structured explicitly as DD/MM/YYYY
             booking_date = st.date_input("Date (DD/MM/YYYY)", datetime.date.today(), format="DD/MM/YYYY")
             start_time_selection = st.time_input("Exact Start Time", value=datetime.time(9, 0))
             end_time_selection = st.time_input("Exact End Time", value=datetime.time(10, 0))
@@ -323,60 +313,7 @@ if show_admin and tab2 is not None:
     with tab2:
         st.subheader("Welcome to the Admin Hub!")
         
-        # --------------------------------------------------
-        # NEW SECTION: FIND LIVE EVENT & DISPATCH TEXT UPDATE
-        # --------------------------------------------------
-        st.markdown("### 📣 Message Live Event Updates")
-        with st.expander("Click to open Event Messaging Hub", expanded=False):
-            all_approved_msgs = supabase.table("bookings").select("*").eq("status", "Approved").execute()
-            msg_live_list = sort_events_engine(all_approved_msgs.data) if all_approved_msgs else []
-            
-            if not msg_live_list:
-                st.info("No active events found to text.")
-            else:
-                msg_search = st.text_input("🔍 Find Event to Message (Type name, room, or date...)", key="msg_search_box")
-                
-                filtered_msg_list = []
-                for ev in msg_live_list:
-                    formatted_d = parse_to_ddmmyyyy(ev['booking_date'])
-                    search_string = f"{ev['user_name']} {ev['room_name']} {formatted_d}".lower()
-                    if msg_search.strip() == "" or msg_search.lower() in search_string:
-                        filtered_msg_list.append(ev)
-                        
-                if not filtered_msg_list:
-                    st.warning("No matching active events found.")
-                else:
-                    msg_options = {f"{parse_to_ddmmyyyy(ev['booking_date'])} | {ev['room_name']} — {ev['user_name']}": ev for ev in filtered_msg_list}
-                    selected_msg_key = st.selectbox("Select Target Event:", list(msg_options.keys()), key="msg_select_box")
-                    
-                    if selected_msg_key:
-                        msg_target = msg_options[selected_msg_key]
-                        target_phone = msg_target.get('user_email', '')
-                        
-                        st.markdown(f"**Recipient Contact Phone Number:** `{target_phone}`")
-                        
-                        # FIXED: Form wrapper removed to prevent structural column nesting violations
-                        custom_text_area = st.textarea(
-                            "Type your notice update below:",
-                            placeholder="e.g., Due to maintenance issues, your booking room location has changed to the Common Room.",
-                            key=f"text_msg_area_{msg_target['id']}"
-                        )
-                        
-                        if custom_text_area.strip() != "":
-                            composed_update = f"Notice regarding your booking '{msg_target['user_name']}': {custom_text_area}"
-                            
-                            st.info("👇 Click an option below to instantly send via your device apps:")
-                            col_w_update, col_i_update = st.columns(2)
-                            with col_w_update:
-                                st.markdown(f"[💬 Send via WhatsApp]({create_whatsapp_link(target_phone, composed_update)})")
-                            with col_i_update:
-                                st.markdown(f"[📱 Send via iMessage]({create_imessage_link(target_phone, composed_update)})")
-                        else:
-                            st.write("✏️ *Draft a message above to generate dispatch communication hyperlinks.*")
-
-        st.markdown("---")
-        
-        # ACTIVE LIVE EDIT PARAMETERS ENGINE WITH INTEGRATED SEARCH
+       # ACTIVE LIVE EDIT PARAMETERS ENGINE WITH INTEGRATED SEARCH (FIXED)
         st.markdown("### 📝 Edit Live Events")
         with st.expander("Click to open Live Engine", expanded=True):
             all_live = supabase.table("bookings").select("*").eq("status", "Approved").execute()
@@ -385,8 +322,10 @@ if show_admin and tab2 is not None:
             if not live_list:
                 st.info("No active events currently booked to modify.")
             else:
+                # SEARCH COMPONENT: Live filter engine for edits
                 tweak_search = st.text_input("🔍 Search Event to Edit (Type event name, room, or date...)", key="tweak_search_box")
                 
+                # Filter down options dynamically based on string comparisons
                 filtered_tweak_list = []
                 for ev in live_list:
                     formatted_d = parse_to_ddmmyyyy(ev['booking_date'])
@@ -403,6 +342,7 @@ if show_admin and tab2 is not None:
                     if selected_event_key:
                         target_event = event_options[selected_event_key]
                         
+                        # FIXED: We use a completely unique form key anchored strictly to the unique database row ID
                         with st.form(key=f"live_tweak_form_{target_event['id']}"):
                             edit_name = st.text_input("Event Name / Contact String", value=target_event['user_name'])
                             edit_room = st.selectbox("Assigned Room", AVAILABLE_ROOMS, index=AVAILABLE_ROOMS.index(target_event['room_name']))
@@ -431,6 +371,7 @@ if show_admin and tab2 is not None:
                                         "end_time": edit_end.strftime("%H:%M:%S")
                                     }
                                     
+                                    # FIXED: Explicitly targeting only the matching entry ID and forcing an immediate commit
                                     supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
                                     
                                     formatted_new_date = edit_date.strftime("%d/%m/%Y")
@@ -517,29 +458,23 @@ if show_admin and tab2 is not None:
             for pb in pending_bookings:
                 with st.container():
                     st.markdown(f"#### {pb['user_name']} ({pb['room_name']})")
+                    # COMPLIANCE: Pending logs layout metrics show date as DD/MM/YYYY
                     parsed_date = parse_to_ddmmyyyy(pb['booking_date'])
                     st.text(f"📅 Date & Time: {parsed_date} | {pb['start_time'][:5]} - {pb['end_time'][:5]}")
                     
-                    pb_phone = pb.get('user_email', '')
                     col_app, col_rej, _ = st.columns([1, 1, 4])
-                    
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
-                        msg_body = f"Hi {pb['user_name']}, your request for '{pb['room_name']}' on {parsed_date} has been APPROVED! See you then."
-                        st.success("Approved in database! Send notice to applicant:")
-                        st.markdown(f"[💬 Send Approval via WhatsApp]({create_whatsapp_link(pb_phone, msg_body)})")
-                        st.markdown(f"[📱 Send Approval via iMessage]({create_imessage_link(pb_phone, msg_body)})")
-                        
+                        st.session_state.admin_action_msg = f"✅ Approved request from '{pb['user_name']}' on {parsed_date}."
+                        st.rerun()
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
-                        msg_body = f"Hi {pb['user_name']}, unfortunately we are unable to accommodate your booking request for the '{pb['room_name']}' on {parsed_date} at this time."
-                        st.error("Marked as Rejected! Send notice to applicant:")
-                        st.markdown(f"[💬 Send Denial via WhatsApp]({create_whatsapp_link(pb_phone, msg_body)})")
-                        st.markdown(f"[📱 Send Denial via iMessage]({create_imessage_link(pb_phone, msg_body)})")
+                        st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}' on {parsed_date}."
+                        st.rerun()
 
         st.markdown("---")
         
-        # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP
+       # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP (OPTIMIZED)
         st.markdown("### 🗑️ Delete Live Events")
         with st.expander("Click to view full calendar cleanup deck", expanded=True):
             all_approved = supabase.table("bookings").select("*").eq("status", "Approved").execute()
@@ -550,6 +485,7 @@ if show_admin and tab2 is not None:
             else:
                 delete_search = st.text_input("🔍 Search Event to Delete (Type name, room, or date...)", key="delete_search_box")
                 
+                # Dynamic Search Filtering
                 filtered_delete_list = []
                 for ab in approved_list:
                     formatted_d = parse_to_ddmmyyyy(ab['booking_date'])
@@ -560,6 +496,7 @@ if show_admin and tab2 is not None:
                 if not filtered_delete_list:
                     st.warning("No matching active events found.")
                 else:
+                    # Choose Deletion Method Strategy
                     delete_mode = st.radio(
                         "Deletion Strategy:",
                         ["Clean up Individual Instances", "💥 Batch Delete Entire Recurring Series"],
@@ -568,6 +505,7 @@ if show_admin and tab2 is not None:
                     )
                     st.markdown("---")
                     
+                    # STRATEGY A: Standard precise individual line removal
                     if delete_mode == "Clean up Individual Instances":
                         for ab in filtered_delete_list:
                             col_info, col_del = st.columns([5, 1])
@@ -581,13 +519,16 @@ if show_admin and tab2 is not None:
                                     st.session_state.admin_action_msg = f"🗑️ Deleted single instance for '{ab['user_name']}' on {m_date}."
                                     st.rerun()
                                     
+                    # STRATEGY B: Wipe out entire series grouped cleanly by name and location targets
                     else:
                         st.info("The view below groups identical booking titles together. Deleting one will clear all future dates matching that title.")
                         
+                        # Use Python sets to distill down unique repeating groups dynamically
                         seen_groups = set()
                         unique_series_list = []
                         
                         for ab in filtered_delete_list:
+                            # Group items based on their structural profile name and assigned room target
                             group_profile = (ab['user_name'], ab['room_name'])
                             if group_profile not in seen_groups:
                                 seen_groups.add(group_profile)
@@ -595,12 +536,15 @@ if show_admin and tab2 is not None:
                         
                         for ab in unique_series_list:
                             col_info, col_del = st.columns([5, 1])
+                            
+                            # Count how many total instances exist down the timeline for context
                             total_count = sum(1 for item in filtered_delete_list if item['user_name'] == ab['user_name'] and item['room_name'] == ab['room_name'])
                             
                             with col_info:
                                 st.write(f"📁 **{ab['user_name']}** inside **{ab['room_name']}** *(Contains {total_count} scheduled allocations)*")
                             with col_del:
                                 if st.button("Wipe All 🚨", key=f"del_series_{ab['id']}"):
+                                    # Execute massive multi-row delete target query matching titles and rooms
                                     supabase.table("bookings").delete().eq("user_name", ab['user_name']).eq("room_name", ab['room_name']).execute()
                                     st.session_state.admin_action_msg = f"💥 Mass Deletion Completed: All {total_count} entries for '{ab['user_name']}'."
                                     st.rerun()
