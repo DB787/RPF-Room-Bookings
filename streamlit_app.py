@@ -355,20 +355,28 @@ if show_admin and tab2 is not None:
                         
                         st.markdown(f"**Recipient Contact Phone Number:** `{target_phone}`")
                         
-                        custom_text_area = st.textarea(
-                            "Type your notice update below:",
-                            placeholder="e.g., Due to maintenance issues, your booking room location has changed to the Common Room."
-                        )
-                        
-                        if custom_text_area.strip() != "":
-                            composed_update = f"Notice regarding your booking '{msg_target['user_name']}': {custom_text_area}"
+                        # FIX: Put the text creation inside a unique form bound to the record ID to prevent crashes
+                        with st.form(key=f"msg_sender_form_{msg_target['id']}", clear_on_submit=False):
+                            custom_text_area = st.textarea(
+                                "Type your notice update below:",
+                                placeholder="e.g., Due to maintenance issues, your booking room location has changed to the Common Room.",
+                                key=f"text_area_{msg_target['id']}"
+                            )
                             
-                            st.info("Click an option to send via your device:")
-                            col_w_update, col_i_update = st.columns(2)
-                            with col_w_update:
-                                st.markdown(f"[💬 Send via WhatsApp]({create_whatsapp_link(target_phone, composed_update)})")
-                            with col_i_update:
-                                st.markdown(f"[📱 Send via iMessage]({create_imessage_link(target_phone, composed_update)})")
+                            generate_links = st.form_submit_button("Generate Message Links")
+                            
+                            if generate_links:
+                                if custom_text_area.strip() == "":
+                                    st.warning("Please type a message before attempting to generate links.")
+                                else:
+                                    composed_update = f"Notice regarding your booking '{msg_target['user_name']}': {custom_text_area}"
+                                    
+                                    st.info("👇 Click an option below to send via your device:")
+                                    col_w_update, col_i_update = st.columns(2)
+                                    with col_w_update:
+                                        st.markdown(f"[💬 Send via WhatsApp]({create_whatsapp_link(target_phone, composed_update)})")
+                                    with col_i_update:
+                                        st.markdown(f"[📱 Send via iMessage]({create_imessage_link(target_phone, composed_update)})")
 
         st.markdown("---")
         
@@ -516,28 +524,20 @@ if show_admin and tab2 is not None:
                     parsed_date = parse_to_ddmmyyyy(pb['booking_date'])
                     st.text(f"📅 Date & Time: {parsed_date} | {pb['start_time'][:5]} - {pb['end_time'][:5]}")
                     
-                    # Store variables for easy text reference
                     pb_phone = pb.get('user_email', '')
-                    
                     col_app, col_rej, _ = st.columns([1, 1, 4])
                     
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
-                        
-                        # Generate text templates
                         msg_body = f"Hi {pb['user_name']}, your request for '{pb['room_name']}' on {parsed_date} has been APPROVED! See you then."
                         st.success("Approved in database! Send notice to applicant:")
-                        
-                        # Display free transmission links dynamically inside the loop container block
                         st.markdown(f"[💬 Send Approval via WhatsApp]({create_whatsapp_link(pb_phone, msg_body)})")
                         st.markdown(f"[📱 Send Approval via iMessage]({create_imessage_link(pb_phone, msg_body)})")
                         
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
-                        
                         msg_body = f"Hi {pb['user_name']}, unfortunately we are unable to accommodate your booking request for the '{pb['room_name']}' on {parsed_date} at this time."
                         st.error("Marked as Rejected! Send notice to applicant:")
-                        
                         st.markdown(f"[💬 Send Denial via WhatsApp]({create_whatsapp_link(pb_phone, msg_body)})")
                         st.markdown(f"[📱 Send Denial via iMessage]({create_imessage_link(pb_phone, msg_body)})")
 
