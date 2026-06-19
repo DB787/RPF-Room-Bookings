@@ -474,7 +474,7 @@ if show_admin and tab2 is not None:
 
         st.markdown("---")
         
-        # DATABASE DATA CLEANUP ENGINE WITH INTEGRATED SEARCH
+       # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP (OPTIMIZED)
         st.markdown("### 🗑️ Delete or Cancel Live Events")
         with st.expander("Click to view full calendar cleanup deck", expanded=True):
             all_approved = supabase.table("bookings").select("*").eq("status", "Approved").execute()
@@ -483,10 +483,9 @@ if show_admin and tab2 is not None:
             if not approved_list:
                 st.info("No active events currently published to delete.")
             else:
-                # SEARCH COMPONENT: Live filter engine for deletions
-                delete_search = st.text_input("🔍 Search Event to Delete (Type event name, room, or date...)", key="delete_search_box")
+                delete_search = st.text_input("🔍 Search Event to Delete (Type name, room, or date...)", key="delete_search_box")
                 
-                # Filter rows down dynamically based on string queries
+                # Dynamic Search Filtering
                 filtered_delete_list = []
                 for ab in approved_list:
                     formatted_d = parse_to_ddmmyyyy(ab['booking_date'])
@@ -495,18 +494,57 @@ if show_admin and tab2 is not None:
                         filtered_delete_list.append(ab)
                 
                 if not filtered_delete_list:
-                    st.warning("No matching active events found matching your search term.")
+                    st.warning("No matching active events found.")
                 else:
-                    for ab in filtered_delete_list:
-                        col_info, col_del = st.columns([5, 1])
-                        # COMPLIANCE: Active database list maps out structural dates as DD/MM/YYYY
-                        m_date = parse_to_ddmmyyyy(ab['booking_date'])
+                    # Choose Deletion Method Strategy
+                    delete_mode = st.radio(
+                        "Deletion Strategy:",
+                        ["Clean up Individual Instances", "💥 Batch Delete Entire Recurring Series"],
+                        horizontal=True,
+                        key="delete_mode_strategy"
+                    )
+                    st.markdown("---")
+                    
+                    # STRATEGY A: Standard precise individual line removal
+                    if delete_mode == "Clean up Individual Instances":
+                        for ab in filtered_delete_list:
+                            col_info, col_del = st.columns([5, 1])
+                            m_date = parse_to_ddmmyyyy(ab['booking_date'])
+                                
+                            with col_info:
+                                st.write(f"🔹 **{m_date}** | {ab['room_name']} — {ab['user_name']} ({ab['start_time'][:5]}-{ab['end_time'][:5]})")
+                            with col_del:
+                                if st.button("Delete ❌", key=f"del_indiv_{ab['id']}"):
+                                    supabase.table("bookings").delete().eq("id", ab['id']).execute()
+                                    st.session_state.admin_action_msg = f"🗑️ Deleted single instance for '{ab['user_name']}' on {m_date}."
+                                    st.rerun()
+                                    
+                    # STRATEGY B: Wipe out entire series grouped cleanly by name and location targets
+                    else:
+                        st.info("The view below groups identical booking titles together. Deleting one will clear all future dates matching that title.")
+                        
+                        # Use Python sets to distill down unique repeating groups dynamically
+                        seen_groups = set()
+                        unique_series_list = []
+                        
+                        for ab in filtered_delete_list:
+                            # Group items based on their structural profile name and assigned room target
+                            group_profile = (ab['user_name'], ab['room_name'])
+                            if group_profile not in seen_groups:
+                                seen_groups.add(group_profile)
+                                unique_series_list.append(ab)
+                        
+                        for ab in unique_series_list:
+                            col_info, col_del = st.columns([5, 1])
                             
-                        with col_info:
-                            st.write(f"🔹 **{m_date}** | {ab['room_name']} — {ab['user_name']} ({ab['start_time'][:5]}-{ab['end_time'][:5]})")
-                        with col_del:
-                            if st.button("Delete ❌", key=f"del_{ab['id']}"):
-                                supabase.table("bookings").delete().eq("id", ab['id']).execute()
-                                # COMPLIANCE: Automatic notification text includes sanitized DD/MM/YYYY markers
-                                st.session_state.admin_action_msg = f"🗑️ Deleted live allocation for '{ab['user_name']}' on {m_date}."
-                                st.rerun()
+                            # Count how many total instances exist down the timeline for context
+                            total_count = sum(1 for item in filtered_delete_list if item['user_name'] == ab['user_name'] and item['room_name'] == ab['room_name'])
+                            
+                            with col_info:
+                                st.write(f"📁 **{ab['user_name']}** inside **{ab['room_name']}** *(Contains {total_count} scheduled allocations)*")
+                            with col_del:
+                                if st.button("Wipe All 🔥", key=f"del_series_{ab['id']}"):
+                                    # Execute massive multi-row delete target query matching titles and rooms
+                                    supabase.table("bookings").delete().eq("user_name", ab['user_name']).eq("room_name", ab['room_name']).execute()
+                                    st.session_state.admin_action_msg = f"💥 Mass Cleaned Engine: Purged all {total_count} entries for '{ab['user_name']}'."
+                                    st.rerun()
