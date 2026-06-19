@@ -127,7 +127,7 @@ AVAILABLE_ROOMS = PUBLIC_ROOMS + ADMIN_ONLY_ROOMS if show_admin else PUBLIC_ROOM
 # 5. MAIN INTERFACE LAYOUT
 # ==========================================
 if show_admin:
-    tab1, tab2 = st.tabs(["📅 Schedule & Requests", "⚙️ Manager Controls"])
+    tab1, tab2 = st.tabs(["📅 Schedule & Requests", "⚙️ Admins Hub"])
 else:
     tab1 = st.container()
     tab2 = None
@@ -192,50 +192,30 @@ with tab1:
         if not has_any_bookings:
             st.info(f"🟢 No room allocations booked for the 7-day window starting {start_date_selection.strftime('%d/%m/%Y')}.")
 
-    # 🖥️ FULL CANVAS GRID: RICH DETAIL GRID WITH CLICK PREVIEW
+    # 🖥️ FULL CANVAS GRID: FIXED EMBED WITH SIDE-BY-SIDE OVERLAPS
     else:
         calendar_events = []
         sorted_grid_bookings = sort_events_engine(raw_bookings)
-        
-        # Dictionary to lookup deep descriptive data when clicked
-        event_lookup = {}
         
         for b in sorted_grid_bookings:
             try:
                 st_time_obj = datetime.datetime.strptime(b['start_time'], "%H:%M:%S")
                 end_time_obj = datetime.datetime.strptime(b['end_time'], "%H:%M:%S")
                 time_display = f"{st_time_obj.strftime('%I:%M %p')} - {end_time_obj.strftime('%I:%M %p')}"
-                short_time = f"{st_time_obj.strftime('%I:%M %p')} - {end_time_obj.strftime('%I:%M %p')}"
             except:
                 time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
-                short_time = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
-            
-            # Extract just the group/event title, ignoring the bracketed contact name for the block layout
-            pure_title = b['user_name'].split(' (')[0] if ' (' in b['user_name'] else b['user_name']
-            
-            # RICH TEXT BLOCK: Stacks everything cleanly on individual lines with emoji anchors
-            rich_grid_label = f"📝 {pure_title}\n⏰ {short_time}\n📍 {b['room_name']}"
-            
-            event_id = str(b['id'])
+                
+            full_event_label = f"{b['user_name']}\n⏰ {time_display}\n📍 {b['room_name']}"
             
             calendar_events.append({
-                "id": event_id,
-                "title": rich_grid_label,
+                "title": full_event_label,
                 "start": f"{b['booking_date']}T{b['start_time']}",
                 "end": f"{b['booking_date']}T{b['end_time']}",
+                "resourceId": b['room_name'],
                 "backgroundColor": "#bacfe6",  
                 "borderColor": "#82a6d7",
                 "textColor": "#1e293b"
             })
-            
-            # Store the full attributes for the active click gateway below
-            event_lookup[event_id] = {
-                "title": b['user_name'],
-                "room": b['room_name'],
-                "date": parse_to_ddmmyyyy(b['booking_date']),
-                "time": time_display,
-                "phone": b.get('user_email', 'N/A')
-            }
             
         calendar_options = {
             "initialView": "timeGridWeek",
@@ -248,36 +228,46 @@ with tab1:
             "height": "auto",
             "slotDuration": "00:30:00",    
             "snapDuration": "00:15:00",
+            "slotEventOverlap": True, 
+            "eventOrder": "start,title",
             "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
         }
         
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
             .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
-            .fc-theme-standard td, .fc-theme-
-        
-        # 🔔 THE DETAILED ACTION LISTENER
-        # When a user clicks on an event block, this logic loop catches it instantly
-        if calendar_callback and "eventClick" in calendar_callback:
-            clicked_id = calendar_callback["eventClick"]["event"]["id"]
+            .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
+            .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
             
-            if clicked_id in event_lookup:
-                info = event_lookup[clicked_id]
-                
-                # Creates a beautifully structured layout banner right below or beside the calendar
-                st.markdown("---")
-                st.info("ℹ️ **Click Selection Detected! Full Event Breakdown Displayed Below:**")
-                
-                meta_col1, meta_col2 = st.columns(2)
-                with meta_col1:
-                    st.markdown(f"### 👤 Group: **{info['title']}**")
-                    st.markdown(f"#### 📍 Assigned Location: `{info['room']}`")
-                with meta_col2:
-                    st.markdown(f"#### 📅 Booked Date: **{info['date']}**")
-                    st.markdown(f"#### ⏰ Timeline Windows: `{info['time']}`")
-                    if info['phone'] and info['phone'] != "Admin Blockout":
-                        st.markdown(f"📞 **Contact Reference:** {info['phone']}")
-                st.markdown("---")
+            /* 🛠️ FORCE TRUE SIDE-BY-SIDE SIDE ALLOCATION (NO OVERLAPPING) */
+            .fc-timegrid-slots td { position: relative; }
+            .fc-timegrid-events-container { margin: 0 !important; }
+            
+            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { 
+                background-color: #bacfe6 !important; 
+                border-radius: 6px !important; 
+                padding: 4px !important; 
+                box-shadow: 1px 1px 4px rgba(0,0,0,0.08) !important;
+                box-sizing: border-box !important;
+            }
+            
+            /* This ensures FullCalendar scales them nicely next to each other instead of stacking layered cards */
+            .fc-timegrid-event {
+                opacity: 0.98 !important;
+            }
+            
+            .fc-event-main, .fc-event-title, .fc-event-title-container { 
+                font-size: 11px !important; 
+                font-weight: 700 !important; 
+                line-height: 1.2 !important; 
+                white-space: pre-wrap !important; 
+                word-break: break-word !important; 
+                color: #1e293b !important;
+            }
+            .fc-event-time { display: none !important; }
+        """
+        
+        calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
         
     st.markdown("---")
     st.subheader("Submit a New Booking Request")
@@ -286,7 +276,7 @@ with tab1:
     with st.form("request_form", clear_on_submit=True):
         col1, col2 = st.columns(2)
         with col1:
-            booking_name = st.text_input("Event / Group Name")
+            booking_name = st.text_input("Event Name")
             contact_name = st.text_input("Your Name")
             contact_phone = st.text_input("Your Phone Number")
             room_selection = st.selectbox("Select Room", AVAILABLE_ROOMS)
@@ -314,23 +304,23 @@ with tab1:
                 supabase.table("bookings").insert(data).execute()
                 st.success(f"🎉 SUCCESS! Your booking request for '{booking_name}' has been safely logged.")
             else:
-                st.error("Submission Failed: Please complete all input values before saving.", icon="❌")
+                st.error("Submission Failed: Please re-enter the details again.", icon="❌")
 
 # ==========================================
-# 6. MANAGER CONTROLS (TAB 2)
+# 6. ADMIN HUB (TAB 2)
 # ==========================================
 if show_admin and tab2 is not None:
     with tab2:
-        st.subheader("Manager Portal")
+        st.subheader("Welcome to the Admin Hub!")
         
        # ACTIVE LIVE EDIT PARAMETERS ENGINE WITH INTEGRATED SEARCH (FIXED)
-        st.markdown("### 📝 Edit & Tweak Live Events")
-        with st.expander("Click to open Live Tweak Engine", expanded=True):
+        st.markdown("### 📝 Edit Live Events")
+        with st.expander("Click to open Live Engine", expanded=True):
             all_live = supabase.table("bookings").select("*").eq("status", "Approved").execute()
             live_list = sort_events_engine(all_live.data) if all_live else []
             
             if not live_list:
-                st.info("No active events currently published to modify.")
+                st.info("No active events currently booked to modify.")
             else:
                 # SEARCH COMPONENT: Live filter engine for edits
                 tweak_search = st.text_input("🔍 Search Event to Edit (Type event name, room, or date...)", key="tweak_search_box")
@@ -391,13 +381,13 @@ if show_admin and tab2 is not None:
         st.markdown("---")
         
         # RECURRING MULTI-DAY EVENT ENGINE
-        st.markdown("### 🔁 Add Recurring Schedule Block")
+        st.markdown("### 🔁 Add Recurring Events")
         with st.expander("Click to open Advanced Multi-Day Recurring Creator"):
             with st.form("recurring_form"):
                 rec_title = st.text_input("Recurring Event Title")
                 rec_room = st.selectbox("Select Target Room", AVAILABLE_ROOMS, key="recurring_target_room")
                 
-                st.markdown("**Select Days of the Week to apply this schedule block:**")
+                st.markdown("**Select Days of the Week to add this Event to:**")
                 c_mon, c_tue, c_wed, c_thu, c_fri, c_sat, c_sun = st.columns(7)
                 mon = c_mon.checkbox("Mon", value=True)
                 tue = c_tue.checkbox("Tue")
@@ -421,10 +411,10 @@ if show_admin and tab2 is not None:
                     start_bound_date = st.date_input("Schedule Start Date", datetime.date.today(), format="DD/MM/YYYY")
                     rec_start_time = st.time_input("Recurring Start Time", value=datetime.time(18, 0))
                 with col_r2:
-                    total_weeks_duration = st.number_input("Repeat sequence for how many weeks total?", min_value=1, max_value=52, value=4)
+                    total_weeks_duration = st.number_input("Repeat for how many weeks total?", min_value=1, max_value=52, value=4)
                     rec_end_time = st.time_input("Recurring End Time", value=datetime.time(19, 30))
                 
-                submit_recurring = st.form_submit_button("Generate Dynamic Recurring Matrix")
+                submit_recurring = st.form_submit_button("Add Recurring Event")
                 if submit_recurring and rec_title:
                     if rec_start_time >= rec_end_time:
                         st.error("Operation Denied: Input times do not make chronological sense.", icon="⏰")
@@ -453,7 +443,7 @@ if show_admin and tab2 is not None:
                             st.session_state.admin_action_msg = f"🔁 Successfully established {len(batch_data)} instances for '{rec_title}'."
                             st.rerun()
                         else:
-                            st.error("No dates matched the selection parameters.")
+                            st.error("No dates matched the current events.")
 
         st.markdown("---")
         
@@ -485,7 +475,7 @@ if show_admin and tab2 is not None:
         st.markdown("---")
         
        # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP (OPTIMIZED)
-        st.markdown("### 🗑️ Delete or Cancel Live Events")
+        st.markdown("### 🗑️ Delete Live Events")
         with st.expander("Click to view full calendar cleanup deck", expanded=True):
             all_approved = supabase.table("bookings").select("*").eq("status", "Approved").execute()
             approved_list = sort_events_engine(all_approved.data) if all_approved else []
@@ -553,8 +543,8 @@ if show_admin and tab2 is not None:
                             with col_info:
                                 st.write(f"📁 **{ab['user_name']}** inside **{ab['room_name']}** *(Contains {total_count} scheduled allocations)*")
                             with col_del:
-                                if st.button("Wipe All 🔥", key=f"del_series_{ab['id']}"):
+                                if st.button("Wipe All 🚨", key=f"del_series_{ab['id']}"):
                                     # Execute massive multi-row delete target query matching titles and rooms
                                     supabase.table("bookings").delete().eq("user_name", ab['user_name']).eq("room_name", ab['room_name']).execute()
-                                    st.session_state.admin_action_msg = f"💥 Mass Cleaned Engine: Purged all {total_count} entries for '{ab['user_name']}'."
+                                    st.session_state.admin_action_msg = f"💥 Mass Deletion Completed: All {total_count} entries for '{ab['user_name']}'."
                                     st.rerun()
