@@ -238,13 +238,24 @@ with tab1:
             .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
             .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
             .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
+            
+            /* 🛠️ FORCE TRUE SIDE-BY-SIDE SIDE ALLOCATION (NO OVERLAPPING) */
+            .fc-timegrid-slots td { position: relative; }
+            .fc-timegrid-events-container { margin: 0 !important; }
+            
             .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { 
                 background-color: #bacfe6 !important; 
                 border-radius: 6px !important; 
                 padding: 4px !important; 
                 box-shadow: 1px 1px 4px rgba(0,0,0,0.08) !important;
-                min-width: 45% !important; 
+                box-sizing: border-box !important;
             }
+            
+            /* This ensures FullCalendar scales them nicely next to each other instead of stacking layered cards */
+            .fc-timegrid-event {
+                opacity: 0.98 !important;
+            }
+            
             .fc-event-main, .fc-event-title, .fc-event-title-container { 
                 font-size: 11px !important; 
                 font-weight: 700 !important; 
