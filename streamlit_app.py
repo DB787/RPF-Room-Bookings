@@ -235,14 +235,6 @@ with tab1:
             "datesAboveResources": True # Puts the room labels cleanly at the top of each column track
         }
         
-        # Call the calendar using the new resources parameter layout
-        calendar(
-            events=calendar_events, 
-            resources=calendar_resources, 
-            options=calendar_options, 
-            custom_css=calendar_styles, 
-            key="booking_calendar"
-        )
         
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
@@ -277,6 +269,14 @@ with tab1:
             }
             .fc-event-time { display: none !important; }
         """
+         # Call the calendar using the new resources parameter layout
+        calendar(
+            events=calendar_events, 
+            resources=calendar_resources, 
+            options=calendar_options, 
+            custom_css=calendar_styles, 
+            key="booking_calendar"
+        )
         
         calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
         
