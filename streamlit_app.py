@@ -192,12 +192,18 @@ with tab1:
         if not has_any_bookings:
             st.info(f"🟢 No room allocations booked for the 7-day window starting {start_date_selection.strftime('%d/%m/%Y')}.")
 
-    # 🖥️ FULL CANVAS GRID: ERROR-FREE HORIZONTAL STACKING OVERVIEW
+    # 🖥️ FULL CANVAS GRID: UNIFIED TEXT-COMBINING VIEW (ZERO OVERLAPS)
     else:
         calendar_events = []
         sorted_grid_bookings = sort_events_engine(raw_bookings)
         
+        # 🤝 Group events by their exact date and time match in Python
+        time_slots = {}
+        
         for b in sorted_grid_bookings:
+            # Create a unique key for each day, start time, and end time slot
+            slot_key = (b['booking_date'], b['start_time'], b['end_time'])
+            
             try:
                 st_time_obj = datetime.datetime.strptime(b['start_time'], "%H:%M:%S")
                 end_time_obj = datetime.datetime.strptime(b['end_time'], "%H:%M:%S")
@@ -205,12 +211,26 @@ with tab1:
             except:
                 time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
                 
-            full_event_label = f"{b['user_name']}\n⏰ {time_display}\n📍 {b['room_name']}"
+            # Formatting line entries clearly (e.g., "• Choir Practice [Main Hall]")
+            event_line = f"• {b['user_name']} [{b['room_name']}]"
+            
+            if slot_key not in time_slots:
+                time_slots[slot_key] = {
+                    "time_label": time_display,
+                    "lines": [event_line]
+                }
+            else:
+                time_slots[slot_key]["lines"].append(event_line)
+                
+        # 🛠️ Build single calendar layout blocks out of the grouped matches
+        for (b_date, b_start, b_end), slot_data in time_slots.items():
+            # Join all parallel events together using clean newline breaks
+            full_event_label = f"⏰ {slot_data['time_label']}\n" + "\n".join(slot_data['lines'])
             
             calendar_events.append({
                 "title": full_event_label,
-                "start": f"{b['booking_date']}T{b['start_time']}",
-                "end": f"{b['booking_date']}T{b['end_time']}",
+                "start": f"{b_date}T{b_start}",
+                "end": f"{b_date}T{b_end}",
                 "backgroundColor": "#bacfe6",  
                 "borderColor": "#82a6d7",
                 "textColor": "#1e293b"
@@ -227,61 +247,20 @@ with tab1:
             "height": "auto",
             "slotDuration": "00:30:00",    
             "snapDuration": "00:15:00",
-            # Tells the calendar engine to handle overlapping events at the same time
-            "slotEventOverlap": True, 
-            "eventOrder": "start,title",
             "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
         }
         
-        # This custom CSS overrides FullCalendar's layout inside the wrapper iframe
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
             .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
-            .fc-theme-standard td, .fc-theme-standard Th { border: 1px solid #e2e8f0 !important; }
+            .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
             .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
-            
-            /* FORCE EVENTS TO SIT SIDE-BY-SIDE INSTEAD OF ON TOP OF EACH OTHER */
-            .fc-timegrid-event-harness {
-                width: auto !important;
-                left: 0 !important;
-                right: 0 !important;
-                margin-left: 2px !important;
-                margin-right: 2px !important;
-            }
-            
-            .fc-timegrid-events-container {
-                display: flex !important;
-                flex-direction: row !important; /* Force side-by-side alignment */
-                align-items: stretch !important;
-            }
-            
-            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { 
-                background-color: #bacfe6 !important; 
-                border-radius: 6px !important; 
-                padding: 4px !important; 
-                box-shadow: 1px 1px 4px rgba(0,0,0,0.08) !important;
-                flex: 1 1 0% !important; /* Forces items sharing a slot to divide space evenly */
-                min-width: 0 !important;
-            }
-            
-            .fc-event-main, .fc-event-title, .fc-event-title-container { 
-                font-size: 11px !important; 
-                font-weight: 700 !important; 
-                line-height: 1.2 !important; 
-                white-space: pre-wrap !important; 
-                word-break: break-word !important; 
-                color: #1e293b !important;
-            }
+            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 6px !important; }
+            .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.4 !important; white-space: pre-wrap !important; word-break: break-word !important; color: #1e293b !important; }
             .fc-event-time { display: none !important; }
         """
         
-        # Render the standard calendar without resource parameters to clear the crash error
-        calendar(
-            events=calendar_events, 
-            options=calendar_options, 
-            custom_css=calendar_styles, 
-            key="booking_calendar"
-        )
+        calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
         
     st.markdown("---")
     st.subheader("Submit a New Booking Request")
