@@ -93,7 +93,14 @@ def clean_title(name_str):
 
 def sort_events_engine(event_list):
     """Sorts data chronologically, then alphabetically by event name"""
-    return sorted(event_list, key=lambda x: (x['start_time'], clean_title(x['user_name'])))
+    return sorted(event_list, key=lambda x: (x['booking_date'], x['start_time'], clean_title(x['user_name'])))
+
+def parse_to_ddmmyyyy(date_str):
+    """Safely normalizes database YYYY-MM-DD strings to visual DD/MM/YYYY formats"""
+    try:
+        return datetime.datetime.strptime(date_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+    except:
+        return date_str
 
 if "admin_action_msg" in st.session_state:
     st.toast(st.session_state.admin_action_msg, icon="⚙️")
@@ -150,7 +157,8 @@ with tab1:
             target_date_str = str(target_date)
             day_events = [b for b in raw_bookings if b['booking_date'] == target_date_str]
             
-            day_header = target_date.strftime("%A (%b %d, %Y)")
+            # STATED COMPLIANCE: Forces day headers to explicitly layout as DD/MM/YYYY
+            day_header = target_date.strftime("%A (%d/%m/%Y)")
             if target_date == datetime.date.today():
                 day_header = "⭐️ TODAY — " + day_header
             elif target_date == datetime.date.today() + datetime.timedelta(days=1):
@@ -187,7 +195,6 @@ with tab1:
     # 🖥️ FULL CANVAS GRID: FIXED EMBED WITH SIDE-BY-SIDE OVERLAPS
     else:
         calendar_events = []
-        # Run sorting on the grid backend database events to organize overlapping items cleanly
         sorted_grid_bookings = sort_events_engine(raw_bookings)
         
         for b in sorted_grid_bookings:
@@ -221,7 +228,6 @@ with tab1:
             "height": "auto",
             "slotDuration": "00:30:00",    
             "snapDuration": "00:15:00",
-            # FIXES CLIPPED RENDERINGS: Instructs engine to display events side-by-side rather than stacking on top of each other
             "slotEventOverlap": True, 
             "eventOrder": "start,title",
             "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
@@ -232,8 +238,6 @@ with tab1:
             .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
             .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
             .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
-            
-            /* Responsive structural widths to prevent layout blocks from compressing unreadably */
             .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { 
                 background-color: #bacfe6 !important; 
                 border-radius: 6px !important; 
@@ -266,16 +270,14 @@ with tab1:
             contact_phone = st.text_input("Your Phone Number")
             room_selection = st.selectbox("Select Room", AVAILABLE_ROOMS)
         with col2:
+            # COMPLIANCE: Date picker UI structured explicitly as DD/MM/YYYY
             booking_date = st.date_input("Date (DD/MM/YYYY)", datetime.date.today(), format="DD/MM/YYYY")
-            
-            # COMPLETELY CUSTOMIZABLE TIME ENGINES (Native Time Input widgets allowing down to the minute choices)
             start_time_selection = st.time_input("Exact Start Time", value=datetime.time(9, 0))
             end_time_selection = st.time_input("Exact End Time", value=datetime.time(10, 0))
             
         submit_btn = st.form_submit_button("Submit Request")
         
         if submit_btn:
-            # TIME CONSTRAINTS LOGIC GATEWAY: Blocks illogical inputs (e.g., 3 AM to 2 AM)
             if start_time_selection >= end_time_selection:
                 st.error("Submission Denied: Your event start time cannot happen after or at the exact same time as your end time.", icon="⏰")
             elif booking_name and contact_name and contact_phone:
@@ -300,50 +302,67 @@ if show_admin and tab2 is not None:
     with tab2:
         st.subheader("Manager Portal")
         
-        # ACTIVE LIVE EDIT PARAMETERS ENGINE
+        # ACTIVE LIVE EDIT PARAMETERS ENGINE WITH INTEGRATED SEARCH
         st.markdown("### 📝 Edit & Tweak Live Events")
-        with st.expander("Click to open Live Tweak Engine"):
-            all_live = supabase.table("bookings").select("*").eq("status", "Approved").order("booking_date").execute()
-            live_list = all_live.data if all_live else []
+        with st.expander("Click to open Live Tweak Engine", expanded=True):
+            all_live = supabase.table("bookings").select("*").eq("status", "Approved").execute()
+            live_list = sort_events_engine(all_live.data) if all_live else []
             
             if not live_list:
                 st.info("No active events currently published to modify.")
             else:
-                event_options = {f"{ev['booking_date']} | {ev['room_name']} — {ev['user_name']}": ev for ev in live_list}
-                selected_event_key = st.selectbox("Choose an Event to Edit", list(event_options.keys()))
+                # SEARCH COMPONENT: Live filter engine for edits
+                tweak_search = st.text_input("🔍 Search Event to Edit (Type event name, room, or date...)", key="tweak_search_box")
                 
-                if selected_event_key:
-                    target_event = event_options[selected_event_key]
+                # Filter down options dynamically based on string comparisons
+                filtered_tweak_list = []
+                for ev in live_list:
+                    formatted_d = parse_to_ddmmyyyy(ev['booking_date'])
+                    search_string = f"{ev['user_name']} {ev['room_name']} {formatted_d}".lower()
+                    if tweak_search.strip() == "" or tweak_search.lower() in search_string:
+                        filtered_tweak_list.append(ev)
+                
+                if not filtered_tweak_list:
+                    st.warning("No matching active events found matching your search term.")
+                else:
+                    event_options = {f"{parse_to_ddmmyyyy(ev['booking_date'])} | {ev['room_name']} — {ev['user_name']}": ev for ev in filtered_tweak_list}
+                    selected_event_key = st.selectbox("Choose an Event to Edit", list(event_options.keys()))
                     
-                    with st.form(f"edit_form_{target_event['id']}"):
-                        edit_name = st.text_input("Event Name / Contact String", value=target_event['user_name'])
-                        edit_room = st.selectbox("Assigned Room", AVAILABLE_ROOMS, index=AVAILABLE_ROOMS.index(target_event['room_name']))
-                        edit_date = st.date_input("Scheduled Date", datetime.datetime.strptime(target_event['booking_date'], "%Y-%m-%d"), format="DD/MM/YYYY")
+                    if selected_event_key:
+                        target_event = event_options[selected_event_key]
                         
-                        parsed_curr_start = datetime.datetime.strptime(target_event['start_time'][:8], "%H:%M:%S").time()
-                        parsed_curr_end = datetime.datetime.strptime(target_event['end_time'][:8], "%H:%M:%S").time()
-                        
-                        col_e1, col_e2 = st.columns(2)
-                        with col_e1:
-                            edit_start = st.time_input("Modify Start Time", value=parsed_curr_start)
-                        with col_e2:
-                            edit_end = st.time_input("Modify End Time", value=parsed_curr_end)
+                        with st.form(f"edit_form_{target_event['id']}"):
+                            edit_name = st.text_input("Event Name / Contact String", value=target_event['user_name'])
+                            edit_room = st.selectbox("Assigned Room", AVAILABLE_ROOMS, index=AVAILABLE_ROOMS.index(target_event['room_name']))
+                            edit_date = st.date_input("Scheduled Date", datetime.datetime.strptime(target_event['booking_date'], "%Y-%m-%d"), format="DD/MM/YYYY")
                             
-                        save_edits = st.form_submit_button("Save Layout Tweaks")
-                        if save_edits:
-                            if edit_start >= edit_end:
-                                st.error("Operation Denied: Logical time mismatch detected.")
-                            else:
-                                update_payload = {
-                                    "user_name": edit_name,
-                                    "room_name": edit_room,
-                                    "booking_date": str(edit_date),
-                                    "start_time": edit_start.strftime("%H:%M:%S"),
-                                    "end_time": edit_end.strftime("%H:%M:%S")
-                                }
-                                supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
-                                st.session_state.admin_action_msg = f"📝 Modified parameters for '{edit_name}'."
-                                st.rerun()
+                            parsed_curr_start = datetime.datetime.strptime(target_event['start_time'][:8], "%H:%M:%S").time()
+                            parsed_curr_end = datetime.datetime.strptime(target_event['end_time'][:8], "%H:%M:%S").time()
+                            
+                            col_e1, col_e2 = st.columns(2)
+                            with col_e1:
+                                edit_start = st.time_input("Modify Start Time", value=parsed_curr_start)
+                            with col_e2:
+                                edit_end = st.time_input("Modify End Time", value=parsed_curr_end)
+                                
+                            save_edits = st.form_submit_button("Save Layout Tweaks")
+                            if save_edits:
+                                if edit_start >= edit_end:
+                                    st.error("Operation Denied: Logical time mismatch detected.")
+                                else:
+                                    update_payload = {
+                                        "user_name": edit_name,
+                                        "room_name": edit_room,
+                                        "booking_date": str(edit_date),
+                                        "start_time": edit_start.strftime("%H:%M:%S"),
+                                        "end_time": edit_end.strftime("%H:%M:%S")
+                                    }
+                                    supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
+                                    
+                                    # COMPLIANCE: Alert notification message matches specified parameters
+                                    formatted_new_date = edit_date.strftime("%d/%m/%Y")
+                                    st.session_state.admin_action_msg = f"📝 Modified parameters for '{edit_name}' on {formatted_new_date}."
+                                    st.rerun()
 
         st.markdown("---")
         
@@ -364,7 +383,6 @@ if show_admin and tab2 is not None:
                 sat = c_sat.checkbox("Sat")
                 sun = c_sun.checkbox("Sun")
                 
-                # Turn checkboxes into lookup codes (0=Monday, 1=Tuesday, etc. matching Python .weekday())
                 active_days = []
                 if mon: active_days.append(0)
                 if tue: active_days.append(1)
@@ -390,11 +408,9 @@ if show_admin and tab2 is not None:
                         st.error("Operation Denied: You must select at least one day checkbox.", icon="📆")
                     else:
                         batch_data = []
-                        # Calculate total span boundaries
                         end_bound_date = start_bound_date + datetime.timedelta(weeks=total_weeks_duration)
                         loop_date = start_bound_date
                         
-                        # Crawl chronologically day-by-day across the calendar matrix
                         while loop_date <= end_bound_date:
                             if loop_date.weekday() in active_days:
                                 batch_data.append({
@@ -420,7 +436,7 @@ if show_admin and tab2 is not None:
         # STANDARD PENDING APPROVAL GATEWAY
         st.markdown("### 📋 Pending Approval Requests")
         pending_res = supabase.table("bookings").select("*").eq("status", "Pending").execute()
-        pending_bookings = pending_res.data if pending_res else []
+        pending_bookings = sort_events_engine(pending_res.data) if pending_res else []
         
         if not pending_bookings:
             st.info("No pending booking requests.")
@@ -428,44 +444,55 @@ if show_admin and tab2 is not None:
             for pb in pending_bookings:
                 with st.container():
                     st.markdown(f"#### {pb['user_name']} ({pb['room_name']})")
-                    try:
-                        parsed_date = datetime.datetime.strptime(pb['booking_date'], "%Y-%m-%d").strftime("%d/%m/%Y")
-                    except:
-                        parsed_date = pb['booking_date']
+                    # COMPLIANCE: Pending logs layout metrics show date as DD/MM/YYYY
+                    parsed_date = parse_to_ddmmyyyy(pb['booking_date'])
                     st.text(f"📅 Date & Time: {parsed_date} | {pb['start_time'][:5]} - {pb['end_time'][:5]}")
                     
                     col_app, col_rej, _ = st.columns([1, 1, 4])
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
-                        st.session_state.admin_action_msg = f"✅ Approved request from '{pb['user_name']}'."
+                        st.session_state.admin_action_msg = f"✅ Approved request from '{pb['user_name']}' on {parsed_date}."
                         st.rerun()
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
-                        st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}'."
+                        st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}' on {parsed_date}."
                         st.rerun()
 
         st.markdown("---")
         
-        # DATABASE DATA CLEANUP ENGINE
+        # DATABASE DATA CLEANUP ENGINE WITH INTEGRATED SEARCH
         st.markdown("### 🗑️ Delete or Cancel Live Events")
-        with st.expander("Click to view full calendar cleanup deck"):
-            all_approved = supabase.table("bookings").select("*").eq("status", "Approved").order("booking_date").execute()
-            approved_list = all_approved.data if all_approved else []
+        with st.expander("Click to view full calendar cleanup deck", expanded=True):
+            all_approved = supabase.table("bookings").select("*").eq("status", "Approved").execute()
+            approved_list = sort_events_engine(all_approved.data) if all_approved else []
             
             if not approved_list:
                 st.info("No active events currently published to delete.")
             else:
+                # SEARCH COMPONENT: Live filter engine for deletions
+                delete_search = st.text_input("🔍 Search Event to Delete (Type event name, room, or date...)", key="delete_search_box")
+                
+                # Filter rows down dynamically based on string queries
+                filtered_delete_list = []
                 for ab in approved_list:
-                    col_info, col_del = st.columns([5, 1])
-                    try:
-                        m_date = datetime.datetime.strptime(ab['booking_date'], "%Y-%m-%d").strftime("%d/%m/%Y")
-                    except:
-                        m_date = ab['booking_date']
-                        
-                    with col_info:
-                        st.write(f"🔹 **{m_date}** | {ab['room_name']} — {ab['user_name']} ({ab['start_time'][:5]}-{ab['end_time'][:5]})")
-                    with col_del:
-                        if st.button("Delete ❌", key=f"del_{ab['id']}"):
-                            supabase.table("bookings").delete().eq("id", ab['id']).execute()
-                            st.session_state.admin_action_msg = f"🗑️ Deleted live allocation for '{ab['user_name']}'."
-                            st.rerun()
+                    formatted_d = parse_to_ddmmyyyy(ab['booking_date'])
+                    search_string = f"{ab['user_name']} {ab['room_name']} {formatted_d}".lower()
+                    if delete_search.strip() == "" or delete_search.lower() in search_string:
+                        filtered_delete_list.append(ab)
+                
+                if not filtered_delete_list:
+                    st.warning("No matching active events found matching your search term.")
+                else:
+                    for ab in filtered_delete_list:
+                        col_info, col_del = st.columns([5, 1])
+                        # COMPLIANCE: Active database list maps out structural dates as DD/MM/YYYY
+                        m_date = parse_to_ddmmyyyy(ab['booking_date'])
+                            
+                        with col_info:
+                            st.write(f"🔹 **{m_date}** | {ab['room_name']} — {ab['user_name']} ({ab['start_time'][:5]}-{ab['end_time'][:5]})")
+                        with col_del:
+                            if st.button("Delete ❌", key=f"del_{ab['id']}"):
+                                supabase.table("bookings").delete().eq("id", ab['id']).execute()
+                                # COMPLIANCE: Automatic notification text includes sanitized DD/MM/YYYY markers
+                                st.session_state.admin_action_msg = f"🗑️ Deleted live allocation for '{ab['user_name']}' on {m_date}."
+                                st.rerun()
