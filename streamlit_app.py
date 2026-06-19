@@ -192,12 +192,12 @@ with tab1:
         if not has_any_bookings:
             st.info(f"🟢 No room allocations booked for the 7-day window starting {start_date_selection.strftime('%d/%m/%Y')}.")
 
-    # 🖥️ FULL CANVAS GRID: INTERACTIVE POPUP DETAILS GRID (ZERO TEXT CHOPS)
+    # 🖥️ FULL CANVAS GRID: RICH DETAIL GRID WITH CLICK PREVIEW
     else:
         calendar_events = []
         sorted_grid_bookings = sort_events_engine(raw_bookings)
         
-        # We create a lookup dictionary so when an event is clicked, we can pull its full details instantly
+        # Dictionary to lookup deep descriptive data when clicked
         event_lookup = {}
         
         for b in sorted_grid_bookings:
@@ -205,18 +205,22 @@ with tab1:
                 st_time_obj = datetime.datetime.strptime(b['start_time'], "%H:%M:%S")
                 end_time_obj = datetime.datetime.strptime(b['end_time'], "%H:%M:%S")
                 time_display = f"{st_time_obj.strftime('%I:%M %p')} - {end_time_obj.strftime('%I:%M %p')}"
+                short_time = f"{st_time_obj.strftime('%I:%M %p')} - {end_time_obj.strftime('%I:%M %p')}"
             except:
                 time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
+                short_time = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
             
-            # Keep the calendar grid label incredibly short so it never chops or breaks columns
-            short_grid_label = f"• {b['user_name'].split(' (')[0]} ({b['room_name']})"
+            # Extract just the group/event title, ignoring the bracketed contact name for the block layout
+            pure_title = b['user_name'].split(' (')[0] if ' (' in b['user_name'] else b['user_name']
             
-            # Unique string ID to link the grid block to our python details engine
+            # RICH TEXT BLOCK: Stacks everything cleanly on individual lines with emoji anchors
+            rich_grid_label = f"📝 {pure_title}\n⏰ {short_time}\n📍 {b['room_name']}"
+            
             event_id = str(b['id'])
             
             calendar_events.append({
                 "id": event_id,
-                "title": short_grid_label,
+                "title": rich_grid_label,
                 "start": f"{b['booking_date']}T{b['start_time']}",
                 "end": f"{b['booking_date']}T{b['end_time']}",
                 "backgroundColor": "#bacfe6",  
@@ -224,7 +228,7 @@ with tab1:
                 "textColor": "#1e293b"
             })
             
-            # Store the deep descriptive data for the click popup engine
+            # Store the full attributes for the active click gateway below
             event_lookup[event_id] = {
                 "title": b['user_name'],
                 "room": b['room_name'],
@@ -250,20 +254,7 @@ with tab1:
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
             .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
-            .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
-            .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
-            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 2px !important; cursor: pointer !important; }
-            .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #1e293b !important; }
-            .fc-event-time { display: none !important; }
-        """
-        
-        # Render the grid and capture user interactions
-        calendar_callback = calendar(
-            events=calendar_events, 
-            options=calendar_options, 
-            custom_css=calendar_styles, 
-            key="booking_calendar"
-        )
+            .fc-theme-standard td, .fc-theme-
         
         # 🔔 THE DETAILED ACTION LISTENER
         # When a user clicks on an event block, this logic loop catches it instantly
