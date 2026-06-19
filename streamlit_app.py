@@ -355,28 +355,24 @@ if show_admin and tab2 is not None:
                         
                         st.markdown(f"**Recipient Contact Phone Number:** `{target_phone}`")
                         
-                        # FIX: Put the text creation inside a unique form bound to the record ID to prevent crashes
-                        with st.form(key=f"msg_sender_form_{msg_target['id']}", clear_on_submit=False):
-                            custom_text_area = st.textarea(
-                                "Type your notice update below:",
-                                placeholder="e.g., Due to maintenance issues, your booking room location has changed to the Common Room.",
-                                key=f"text_area_{msg_target['id']}"
-                            )
+                        # FIXED: Form wrapper removed to prevent structural column nesting violations
+                        custom_text_area = st.textarea(
+                            "Type your notice update below:",
+                            placeholder="e.g., Due to maintenance issues, your booking room location has changed to the Common Room.",
+                            key=f"text_msg_area_{msg_target['id']}"
+                        )
+                        
+                        if custom_text_area.strip() != "":
+                            composed_update = f"Notice regarding your booking '{msg_target['user_name']}': {custom_text_area}"
                             
-                            generate_links = st.form_submit_button("Generate Message Links")
-                            
-                            if generate_links:
-                                if custom_text_area.strip() == "":
-                                    st.warning("Please type a message before attempting to generate links.")
-                                else:
-                                    composed_update = f"Notice regarding your booking '{msg_target['user_name']}': {custom_text_area}"
-                                    
-                                    st.info("👇 Click an option below to send via your device:")
-                                    col_w_update, col_i_update = st.columns(2)
-                                    with col_w_update:
-                                        st.markdown(f"[💬 Send via WhatsApp]({create_whatsapp_link(target_phone, composed_update)})")
-                                    with col_i_update:
-                                        st.markdown(f"[📱 Send via iMessage]({create_imessage_link(target_phone, composed_update)})")
+                            st.info("👇 Click an option below to instantly send via your device apps:")
+                            col_w_update, col_i_update = st.columns(2)
+                            with col_w_update:
+                                st.markdown(f"[💬 Send via WhatsApp]({create_whatsapp_link(target_phone, composed_update)})")
+                            with col_i_update:
+                                st.markdown(f"[📱 Send via iMessage]({create_imessage_link(target_phone, composed_update)})")
+                        else:
+                            st.write("✏️ *Draft a message above to generate dispatch communication hyperlinks.*")
 
         st.markdown("---")
         
