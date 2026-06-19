@@ -217,13 +217,9 @@ with tab1:
                 "textColor": "#1e293b"
             })
             
-        # Define the individual room tracks for the calendar to display side-by-side
-        calendar_resources = [{"id": room, "title": room} for room in AVAILABLE_ROOMS]
-        
-        calendar_options = {
-            # Changes view from a weekly grid to a clear daily room-by-room column track
-            "initialView": "resourceTimeGridDay",
-            "headerToolbar": {"left": "prev,next today", "center": "title", "right": "resourceTimeGridDay"},
+       calendar_options = {
+            "initialView": "timeGridWeek",
+            "headerToolbar": {"left": "prev,next today", "center": "title", "right": "timeGridWeek,timeGridDay"},
             "firstDay": 1,              
             "locale": "en-gb",          
             "slotMinTime": "00:00:00",   
@@ -231,10 +227,10 @@ with tab1:
             "allDaySlot": False,
             "height": "auto",
             "slotDuration": "00:30:00",    
-            "snapDuration": "00:15:00",
-            "datesAboveResources": True # Puts the room labels cleanly at the top of each column track
+            "snapDuration": "00:30:00",
+            "slotLabelFormat": {"hour": "numeric", "minute": "2-digit", "omitZeroMinute": False, "meridiem": "short", "hour12": True}
         }
-        
+   
         
         calendar_styles = """
             .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
@@ -269,14 +265,6 @@ with tab1:
             }
             .fc-event-time { display: none !important; }
         """
-         # Call the calendar using the new resources parameter layout
-        calendar(
-            events=calendar_events, 
-            resources=calendar_resources, 
-            options=calendar_options, 
-            custom_css=calendar_styles, 
-            key="booking_calendar"
-        )
         
         calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
         
