@@ -373,4 +373,212 @@ if show_admin and tab2 is not None:
                     if selected_event_key:
                         target_event = event_options[selected_event_key]
                         
-                        with st.
+                        with st.form(key=f"live_tweak_form_{target_event['id']}"):
+                            edit_name = st.text_input("Event Name / Contact String", value=target_event['user_name'])
+                            edit_room = st.selectbox("Assigned Room", AVAILABLE_ROOMS, index=AVAILABLE_ROOMS.index(target_event['room_name']))
+                            edit_date = st.date_input("Scheduled Date", datetime.datetime.strptime(target_event['booking_date'], "%Y-%m-%d"), format="DD/MM/YYYY")
+                            
+                            parsed_curr_start = datetime.datetime.strptime(target_event['start_time'][:8], "%H:%M:%S").time()
+                            parsed_curr_end = datetime.datetime.strptime(target_event['end_time'][:8], "%H:%M:%S").time()
+                            
+                            col_e1, col_e2 = st.columns(2)
+                            with col_e1:
+                                edit_start = st.time_input("Modify Start Time", value=parsed_curr_start)
+                            with col_e2:
+                                edit_end = st.time_input("Modify End Time", value=parsed_curr_end)
+                                
+                            save_edits = st.form_submit_button("Save Layout Tweaks")
+                            
+                            if save_edits:
+                                if edit_start >= edit_end:
+                                    st.error("Operation Denied: Logical time mismatch detected.")
+                                else:
+                                    update_payload = {
+                                        "user_name": edit_name,
+                                        "room_name": edit_room,
+                                        "booking_date": str(edit_date),
+                                        "start_time": edit_start.strftime("%H:%M:%S"),
+                                        "end_time": edit_end.strftime("%H:%M:%S")
+                                    }
+                                    
+                                    supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
+                                    
+                                    formatted_new_date = edit_date.strftime("%d/%m/%Y")
+                                    st.session_state.admin_action_msg = f"📝 Modified parameters for '{edit_name}' on {formatted_new_date}."
+                                    
+                                    # 💬 ADMIN EDIT TEXT GENERATION
+                                    new_time_str = f"{edit_start.strftime('%I:%M %p')} - {edit_end.strftime('%I:%M %p')}"
+                                    mod_msg = f"Notice: Your booking *{edit_name}* has been updated by the administrator. New Details: {edit_room} on {formatted_new_date} from {new_time_str}."
+                                    st.markdown(f'[💬 Click to Send Update Notification]( {generate_msg_link(target_event.get("user_email", ""), mod_msg)} )')
+                                    
+                                    st.rerun()
+                                    
+        st.markdown("---")
+        
+        # RECURRING MULTI-DAY EVENT ENGINE
+        st.markdown("### 🔁 Add Recurring Events")
+        with st.expander("Click to open Advanced Multi-Day Recurring Creator"):
+            with st.form("recurring_form"):
+                rec_title = st.text_input("Recurring Event Title")
+                rec_room = st.selectbox("Select Target Room", AVAILABLE_ROOMS, key="recurring_target_room")
+                
+                st.markdown("**Select Days of the Week to add this Event to:**")
+                c_mon, c_tue, c_wed, c_thu, c_fri, c_sat, c_sun = st.columns(7)
+                mon = c_mon.checkbox("Mon", value=True)
+                tue = c_tue.checkbox("Tue")
+                wed = c_wed.checkbox("Wed")
+                thu = c_thu.checkbox("Thu")
+                fri = c_fri.checkbox("Fri")
+                sat = c_sat.checkbox("Sat")
+                sun = c_sun.checkbox("Sun")
+                
+                active_days = []
+                if mon: active_days.append(0)
+                if tue: active_days.append(1)
+                if wed: active_days.append(2)
+                if thu: active_days.append(3)
+                if fri: active_days.append(4)
+                if sat: active_days.append(5)
+                if sun: active_days.append(6)
+                
+                col_r1, col_r2 = st.columns(2)
+                with col_r1:
+                    start_bound_date = st.date_input("Schedule Start Date", datetime.date.today(), format="DD/MM/YYYY")
+                    rec_start_time = st.time_input("Recurring Start Time", value=datetime.time(18, 0))
+                with col_r2:
+                    total_weeks_duration = st.number_input("Repeat for how many weeks total?", min_value=1, max_value=52, value=4)
+                    rec_end_time = st.time_input("Recurring End Time", value=datetime.time(19, 30))
+                
+                submit_recurring = st.form_submit_button("Add Recurring Event")
+                if submit_recurring and rec_title:
+                    if rec_start_time >= rec_end_time:
+                        st.error("Operation Denied: Input times do not make chronological sense.", icon="⏰")
+                    elif not active_days:
+                        st.error("Operation Denied: You must select at least one day checkbox.", icon="📆")
+                    else:
+                        batch_data = []
+                        end_bound_date = start_bound_date + datetime.timedelta(weeks=total_weeks_duration)
+                        loop_date = start_bound_date
+                        
+                        while loop_date <= end_bound_date:
+                            if loop_date.weekday() in active_days:
+                                batch_data.append({
+                                    "room_name": rec_room,
+                                    "booking_date": str(loop_date),
+                                    "start_time": rec_start_time.strftime("%H:%M:%S"),
+                                    "end_time": rec_end_time.strftime("%H:%M:%S"),
+                                    "user_name": f"🔄 {rec_title}",
+                                    "user_email": "Admin Blockout",
+                                    "status": "Approved"
+                                })
+                            loop_date += datetime.timedelta(days=1)
+                        
+                        if batch_data:
+                            supabase.table("bookings").insert(batch_data).execute()
+                            st.session_state.admin_action_msg = f"🔁 Successfully established {len(batch_data)} instances for '{rec_title}'."
+                            st.rerun()
+                        else:
+                            st.error("No dates matched the current events.")
+
+        st.markdown("---")
+        
+        # STANDARD PENDING APPROVAL GATEWAY WITH TELEMETRY DISPATCH SIGNALS
+        st.markdown("### 📋 Pending Approval Requests")
+        pending_res = supabase.table("bookings").select("*").eq("status", "Pending").execute()
+        pending_bookings = sort_events_engine(pending_res.data) if pending_res else []
+        
+        if not pending_bookings:
+            st.info("No pending booking requests.")
+        else:
+            for pb in pending_bookings:
+                with st.container():
+                    st.markdown(f"#### {pb['user_name']} ({pb['room_name']})")
+                    parsed_date = parse_to_ddmmyyyy(pb['booking_date'])
+                    time_window = f"{pb['start_time'][:5]} - {pb['end_time'][:5]}"
+                    st.text(f"📅 Date & Time: {parsed_date} | {time_window}")
+                    
+                    col_app, col_rej, col_msg = st.columns([1, 1, 4])
+                    
+                    if col_app.button("Approve ✅", key=f"app_{pb['id']}"):
+                        supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
+                        st.session_state.admin_action_msg = f"✅ Approved request from '{pb['user_name']}' on {parsed_date}."
+                        
+                        # WhatsApp Approve Template Injection
+                        approve_text = f"Hi, great news! Your room booking request for *{pb['user_name']}* at the {pb['room_name']} on {parsed_date} ({time_window}) has been *APPROVED*. See you then!"
+                        st.markdown(f'[💬 Click to Dispatch Approval WhatsApp]( {generate_msg_link(pb.get("user_email",""), approve_text)} )')
+                        
+                    if col_rej.button("Reject ❌", key=f"rej_{pb['id']}"):
+                        supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
+                        st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}' on {parsed_date}."
+                        
+                        # WhatsApp Reject Template Injection
+                        reject_text = f"Hello, unfortunately your booking request for *{pb['user_name']}* at the {pb['room_name']} on {parsed_date} cannot be accommodated at this time and has been *Declined*."
+                        st.markdown(f'[💬 Click to Dispatch Rejection WhatsApp]( {generate_msg_link(pb.get("user_email",""), reject_text)} )')
+
+        st.markdown("---")
+        
+        # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP
+        st.markdown("### 🗑️ Delete Live Events")
+        with st.expander("Click to view full calendar cleanup deck", expanded=True):
+            all_approved = supabase.table("bookings").select("*").eq("status", "Approved").execute()
+            approved_list = sort_events_engine(all_approved.data) if all_approved else []
+            
+            if not approved_list:
+                st.info("No active events currently published to delete.")
+            else:
+                delete_search = st.text_input("🔍 Search Event to Delete (Type name, room, or date...)", key="delete_search_box")
+                
+                filtered_delete_list = []
+                for ab in approved_list:
+                    formatted_d = parse_to_ddmmyyyy(ab['booking_date'])
+                    search_string = f"{ab['user_name']} {ab['room_name']} {formatted_d}".lower()
+                    if delete_search.strip() == "" or delete_search.lower() in search_string:
+                        filtered_delete_list.append(ab)
+                
+                if not filtered_delete_list:
+                    st.warning("No matching active events found.")
+                else:
+                    delete_mode = st.radio(
+                        "Deletion Strategy:",
+                        ["Clean up Individual Instances", "💥 Batch Delete Entire Recurring Series"],
+                        horizontal=True,
+                        key="delete_mode_strategy"
+                    )
+                    st.markdown("---")
+                    
+                    if delete_mode == "Clean up Individual Instances":
+                        for ab in filtered_delete_list:
+                            col_info, col_del = st.columns([5, 1])
+                            m_date = parse_to_ddmmyyyy(ab['booking_date'])
+                                
+                            with col_info:
+                                st.write(f"🔹 **{m_date}** | {ab['room_name']} — {ab['user_name']} ({ab['start_time'][:5]}-{ab['end_time'][:5]})")
+                            with col_del:
+                                if st.button("Delete ❌", key=f"del_indiv_{ab['id']}"):
+                                    supabase.table("bookings").delete().eq("id", ab['id']).execute()
+                                    st.session_state.admin_action_msg = f"🗑️ Deleted single instance for '{ab['user_name']}' on {m_date}."
+                                    st.rerun()
+                                    
+                    else:
+                        st.info("The view below groups identical booking titles together. Deleting one will clear all future dates matching that title.")
+                        
+                        seen_groups = set()
+                        unique_series_list = []
+                        
+                        for ab in filtered_delete_list:
+                            group_profile = (ab['user_name'], ab['room_name'])
+                            if group_profile not in seen_groups:
+                                seen_groups.add(group_profile)
+                                unique_series_list.append(ab)
+                        
+                        for ab in unique_series_list:
+                            col_info, col_del = st.columns([5, 1])
+                            total_count = sum(1 for item in filtered_delete_list if item['user_name'] == ab['user_name'] and item['room_name'] == ab['room_name'])
+                            
+                            with col_info:
+                                st.write(f"📁 **{ab['user_name']}** inside **{ab['room_name']}** *(Contains {total_count} scheduled allocations)*")
+                            with col_del:
+                                if st.button("Wipe All 🚨", key=f"del_series_{ab['id']}"):
+                                    supabase.table("bookings").delete().eq("user_name", ab['user_name']).eq("room_name", ab['room_name']).execute()
+                                    st.session_state.admin_action_msg = f"💥 Mass Deletion Completed: All {total_count} entries for '{ab['user_name']}'."
+                                    st.rerun()
