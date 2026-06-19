@@ -211,12 +211,25 @@ with tab1:
                 "title": full_event_label,
                 "start": f"{b['booking_date']}T{b['start_time']}",
                 "end": f"{b['booking_date']}T{b['end_time']}",
-                "resourceId": b['room_name'],
+                "resourceId": b['room_name'],  # <--- Crucial! This maps the booking to its specific column lane
                 "backgroundColor": "#bacfe6",  
                 "borderColor": "#82a6d7",
                 "textColor": "#1e293b"
             })
             
+        # Standard calendar custom theme styles 
+        calendar_styles = """
+            .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
+            .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
+            .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
+            .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
+            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 4px !important; }
+            .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.3 !important; white-space: pre-wrap !important; word-break: break-word !important; color: #1e293b !important; }
+            .fc-event-time { display: none !important; }
+        """
+        
+        # --- PASTE THE NEW SNIPPET DIRECTLY HERE ---
+        
         # Define the individual room tracks for the calendar to display side-by-side
         calendar_resources = [{"id": room, "title": room} for room in AVAILABLE_ROOMS]
         
@@ -235,40 +248,7 @@ with tab1:
             "datesAboveResources": True # Puts the room labels cleanly at the top of each column track
         }
         
-        calendar_styles = """
-            .fc-theme-standard .fc-col-header-cell { background-color: #82a6d7 !important; }
-            .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
-            .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
-            .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
-            
-            /* 🛠️ FORCE TRUE SIDE-BY-SIDE SIDE ALLOCATION (NO OVERLAPPING) */
-            .fc-timegrid-slots td { position: relative; }
-            .fc-timegrid-events-container { margin: 0 !important; }
-            
-            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { 
-                background-color: #bacfe6 !important; 
-                border-radius: 6px !important; 
-                padding: 4px !important; 
-                box-shadow: 1px 1px 4px rgba(0,0,0,0.08) !important;
-                box-sizing: border-box !important;
-            }
-            
-            /* This ensures FullCalendar scales them nicely next to each other instead of stacking layered cards */
-            .fc-timegrid-event {
-                opacity: 0.98 !important;
-            }
-            
-            .fc-event-main, .fc-event-title, .fc-event-title-container { 
-                font-size: 11px !important; 
-                font-weight: 700 !important; 
-                line-height: 1.2 !important; 
-                white-space: pre-wrap !important; 
-                word-break: break-word !important; 
-                color: #1e293b !important;
-            }
-            .fc-event-time { display: none !important; }
-        """
-         # Call the calendar using the new resources parameter layout
+        # Call the calendar using the new resources parameter layout
         calendar(
             events=calendar_events, 
             resources=calendar_resources, 
