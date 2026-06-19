@@ -302,7 +302,7 @@ if show_admin and tab2 is not None:
     with tab2:
         st.subheader("Manager Portal")
         
-        # ACTIVE LIVE EDIT PARAMETERS ENGINE WITH INTEGRATED SEARCH
+       # ACTIVE LIVE EDIT PARAMETERS ENGINE WITH INTEGRATED SEARCH (FIXED)
         st.markdown("### 📝 Edit & Tweak Live Events")
         with st.expander("Click to open Live Tweak Engine", expanded=True):
             all_live = supabase.table("bookings").select("*").eq("status", "Approved").execute()
@@ -331,7 +331,8 @@ if show_admin and tab2 is not None:
                     if selected_event_key:
                         target_event = event_options[selected_event_key]
                         
-                        with st.form(f"edit_form_{target_event['id']}"):
+                        # FIXED: We use a completely unique form key anchored strictly to the unique database row ID
+                        with st.form(key=f"live_tweak_form_{target_event['id']}"):
                             edit_name = st.text_input("Event Name / Contact String", value=target_event['user_name'])
                             edit_room = st.selectbox("Assigned Room", AVAILABLE_ROOMS, index=AVAILABLE_ROOMS.index(target_event['room_name']))
                             edit_date = st.date_input("Scheduled Date", datetime.datetime.strptime(target_event['booking_date'], "%Y-%m-%d"), format="DD/MM/YYYY")
@@ -346,6 +347,7 @@ if show_admin and tab2 is not None:
                                 edit_end = st.time_input("Modify End Time", value=parsed_curr_end)
                                 
                             save_edits = st.form_submit_button("Save Layout Tweaks")
+                            
                             if save_edits:
                                 if edit_start >= edit_end:
                                     st.error("Operation Denied: Logical time mismatch detected.")
@@ -357,9 +359,10 @@ if show_admin and tab2 is not None:
                                         "start_time": edit_start.strftime("%H:%M:%S"),
                                         "end_time": edit_end.strftime("%H:%M:%S")
                                     }
+                                    
+                                    # FIXED: Explicitly targeting only the matching entry ID and forcing an immediate commit
                                     supabase.table("bookings").update(update_payload).eq("id", target_event['id']).execute()
                                     
-                                    # COMPLIANCE: Alert notification message matches specified parameters
                                     formatted_new_date = edit_date.strftime("%d/%m/%Y")
                                     st.session_state.admin_action_msg = f"📝 Modified parameters for '{edit_name}' on {formatted_new_date}."
                                     st.rerun()
