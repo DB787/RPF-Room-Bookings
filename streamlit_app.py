@@ -192,49 +192,46 @@ with tab1:
         if not has_any_bookings:
             st.info(f"🟢 No room allocations booked for the 7-day window starting {start_date_selection.strftime('%d/%m/%Y')}.")
 
-    # 🖥️ FULL CANVAS GRID: UNIFIED TEXT-COMBINING VIEW (ZERO OVERLAPS)
+    # 🖥️ FULL CANVAS GRID: INTERACTIVE POPUP DETAILS GRID (ZERO TEXT CHOPS)
     else:
         calendar_events = []
         sorted_grid_bookings = sort_events_engine(raw_bookings)
         
-        # 🤝 Group events by their exact date and time match in Python
-        time_slots = {}
+        # We create a lookup dictionary so when an event is clicked, we can pull its full details instantly
+        event_lookup = {}
         
         for b in sorted_grid_bookings:
-            # Create a unique key for each day, start time, and end time slot
-            slot_key = (b['booking_date'], b['start_time'], b['end_time'])
-            
             try:
                 st_time_obj = datetime.datetime.strptime(b['start_time'], "%H:%M:%S")
                 end_time_obj = datetime.datetime.strptime(b['end_time'], "%H:%M:%S")
                 time_display = f"{st_time_obj.strftime('%I:%M %p')} - {end_time_obj.strftime('%I:%M %p')}"
             except:
                 time_display = f"{b['start_time'][:5]} - {b['end_time'][:5]}"
-                
-            # Formatting line entries clearly (e.g., "• Choir Practice [Main Hall]")
-            event_line = f"• {b['user_name']} [{b['room_name']}]"
             
-            if slot_key not in time_slots:
-                time_slots[slot_key] = {
-                    "time_label": time_display,
-                    "lines": [event_line]
-                }
-            else:
-                time_slots[slot_key]["lines"].append(event_line)
-                
-        # 🛠️ Build single calendar layout blocks out of the grouped matches
-        for (b_date, b_start, b_end), slot_data in time_slots.items():
-            # Join all parallel events together using clean newline breaks
-            full_event_label = f"⏰ {slot_data['time_label']}\n" + "\n".join(slot_data['lines'])
+            # Keep the calendar grid label incredibly short so it never chops or breaks columns
+            short_grid_label = f"• {b['user_name'].split(' (')[0]} ({b['room_name']})"
+            
+            # Unique string ID to link the grid block to our python details engine
+            event_id = str(b['id'])
             
             calendar_events.append({
-                "title": full_event_label,
-                "start": f"{b_date}T{b_start}",
-                "end": f"{b_date}T{b_end}",
+                "id": event_id,
+                "title": short_grid_label,
+                "start": f"{b['booking_date']}T{b['start_time']}",
+                "end": f"{b['booking_date']}T{b['end_time']}",
                 "backgroundColor": "#bacfe6",  
                 "borderColor": "#82a6d7",
                 "textColor": "#1e293b"
             })
+            
+            # Store the deep descriptive data for the click popup engine
+            event_lookup[event_id] = {
+                "title": b['user_name'],
+                "room": b['room_name'],
+                "date": parse_to_ddmmyyyy(b['booking_date']),
+                "time": time_display,
+                "phone": b.get('user_email', 'N/A')
+            }
             
         calendar_options = {
             "initialView": "timeGridWeek",
@@ -255,12 +252,41 @@ with tab1:
             .fc-col-header-cell-cushion { color: white !important; font-weight: 600 !important; padding: 6px 0 !important; font-size: 1rem; }
             .fc-theme-standard td, .fc-theme-standard th { border: 1px solid #e2e8f0 !important; }
             .fc-timegrid-slot-label-cushion { font-weight: 600 !important; font-size: 0.85rem !important; text-transform: uppercase; }
-            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 6px !important; }
-            .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.4 !important; white-space: pre-wrap !important; word-break: break-word !important; color: #1e293b !important; }
+            .fc-timegrid-event-holder, .fc-timegrid-event, .fc-event { background-color: #bacfe6 !important; border-radius: 4px !important; padding: 2px !important; cursor: pointer !important; }
+            .fc-event-main, .fc-event-title, .fc-event-title-container { font-size: 11px !important; font-weight: 700 !important; line-height: 1.2 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; color: #1e293b !important; }
             .fc-event-time { display: none !important; }
         """
         
-        calendar(events=calendar_events, options=calendar_options, custom_css=calendar_styles, key="booking_calendar")
+        # Render the grid and capture user interactions
+        calendar_callback = calendar(
+            events=calendar_events, 
+            options=calendar_options, 
+            custom_css=calendar_styles, 
+            key="booking_calendar"
+        )
+        
+        # 🔔 THE DETAILED ACTION LISTENER
+        # When a user clicks on an event block, this logic loop catches it instantly
+        if calendar_callback and "eventClick" in calendar_callback:
+            clicked_id = calendar_callback["eventClick"]["event"]["id"]
+            
+            if clicked_id in event_lookup:
+                info = event_lookup[clicked_id]
+                
+                # Creates a beautifully structured layout banner right below or beside the calendar
+                st.markdown("---")
+                st.info("ℹ️ **Click Selection Detected! Full Event Breakdown Displayed Below:**")
+                
+                meta_col1, meta_col2 = st.columns(2)
+                with meta_col1:
+                    st.markdown(f"### 👤 Group: **{info['title']}**")
+                    st.markdown(f"#### 📍 Assigned Location: `{info['room']}`")
+                with meta_col2:
+                    st.markdown(f"#### 📅 Booked Date: **{info['date']}**")
+                    st.markdown(f"#### ⏰ Timeline Windows: `{info['time']}`")
+                    if info['phone'] and info['phone'] != "Admin Blockout":
+                        st.markdown(f"📞 **Contact Reference:** {info['phone']}")
+                st.markdown("---")
         
     st.markdown("---")
     st.subheader("Submit a New Booking Request")
