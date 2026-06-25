@@ -6,4 +6,4 @@ textColor = "#1e293b"
 base = "light"
 
 [client]
-toolbarMode = "viewer"
+toolbarMode = "minimal"
