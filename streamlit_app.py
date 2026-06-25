@@ -475,7 +475,7 @@ if show_admin and tab2 is not None:
         st.markdown("---")
         
         # Quick SMS Text Dispatcher
-        st.markdown("### 💬 Quick SMS Text Dispatcher")
+        st.markdown("### 💬 Contact Event Booker")
         with st.expander("Click to open Quick Text Portal"):
             all_current = supabase.table("bookings").select("*").execute()
             current_data = all_current.data if all_current else []
@@ -502,7 +502,7 @@ if show_admin and tab2 is not None:
                     encoded_text = urllib.parse.quote(sms_body)
                     
                     sms_url = f"sms:{clean_phone}?&body={encoded_text}"
-                    st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Launch Text Message on Phone</a>', unsafe_allow_html=True)
+                    st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Send Text </a>', unsafe_allow_html=True)
 
         st.markdown("---")
         
