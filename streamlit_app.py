@@ -23,13 +23,17 @@ st.logo("🏢", size="large")
 # Custom Responsive CSS Injection
 st.markdown("""
     <style>
-        /* 🚫 Completely eliminate the bottom-right connection status / profile badge */
-div[data-testid="stConnectionStatus"], 
-.stAppDeployButton,
-iframe ~ div {
-    display: none !important;
-    visibility: hidden !important;
-}
+        /* 🚫 Targets the specific dynamic container and viewer badges created by Community Cloud */
+        div[data-testid="stConnectionStatus"],
+        .viewerBadge_container__1QSob,
+        .styles_viewerBadge__1yB5_,
+        .viewerBadge_link__1S137,
+        .viewerBadge_text__1JaDK,
+        [class*="viewerBadge"] {
+            display: none !important;
+            visibility: hidden !important;
+        }
+        
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
         
         html, body, [data-testid="stWidgetLabel"], .main-title, .stTabs {
