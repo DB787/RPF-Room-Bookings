@@ -474,6 +474,38 @@ if show_admin and tab2 is not None:
 
         st.markdown("---")
         
+        # Quick SMS Text Dispatcher
+        st.markdown("### 💬 Quick SMS Text Dispatcher")
+        with st.expander("Click to open Quick Text Portal"):
+            all_current = supabase.table("bookings").select("*").execute()
+            current_data = all_current.data if all_current else []
+            
+            if not current_data:
+                st.info("No bookings found to contact.")
+            else:
+                contact_options = {
+                    f"{ev['booking_date']} | {ev['user_name']} ({ev['user_email']})": ev 
+                    for ev in current_data if ev['user_email'] and ev['user_email'] != "Admin Blockout"
+                }
+                
+                if not contact_options:
+                    st.info("No custom user phone entries found to text.")
+                else:
+                    selected_contact = st.selectbox("Who do you want to message?", list(contact_options.keys()))
+                    sms_target = contact_options[selected_contact]
+                    
+                    default_msg = f"Hi, regarding your booking for '{sms_target['user_name'].split(' (')[0]}' on {sms_target['booking_date']}: "
+                    sms_body = st.text_area("Write your text message here:", value=default_msg)
+                    
+                    clean_phone = "".join(filter(str.isdigit, sms_target['user_email']))
+                    import urllib.parse
+                    encoded_text = urllib.parse.quote(sms_body)
+                    
+                    sms_url = f"sms:{clean_phone}?&body={encoded_text}"
+                    st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Launch Text Message on Phone</a>', unsafe_allow_html=True)
+
+        st.markdown("---")
+        
        # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP (OPTIMIZED)
         st.markdown("### 🗑️ Delete Live Events")
         with st.expander("Click to view full calendar cleanup deck", expanded=True):
