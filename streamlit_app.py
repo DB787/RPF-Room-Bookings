@@ -23,17 +23,6 @@ st.logo("🏢", size="large")
 # Custom Responsive CSS Injection
 st.markdown("""
     <style>
-    /* 1. Make sure the header bar and the sidebar toggle arrow stay perfectly visible */
-        header { visibility: visible !important; background: transparent !important; }
-        [data-testid="collapsedControl"] { visibility: visible !important; display: flex !important; }
-        
-        /* 2. Target and completely hide the right-side platform toolbar menu container */
-        .stAppHeader > div:nth-child(2) { display: none !important; visibility: hidden !important; }
-        [data-testid="stAppHeaderToolbar"] { display: none !important; visibility: hidden !important; }
-        div[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
-        
-        /* 3. Drop the colored decorative ribbon line at the top */
-        [data-testid="stDecoration"] { display: none !important; }
         
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
         
