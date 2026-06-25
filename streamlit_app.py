@@ -23,7 +23,13 @@ st.logo("🏢", size="large")
 # Custom Responsive CSS Injection
 st.markdown("""
     <style>
-        
+        /* 🚫 Completely eliminate the bottom-right connection status / profile badge */
+div[data-testid="stConnectionStatus"], 
+.stAppDeployButton,
+iframe ~ div {
+    display: none !important;
+    visibility: hidden !important;
+}
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
         
         html, body, [data-testid="stWidgetLabel"], .main-title, .stTabs {
