@@ -23,6 +23,11 @@ st.logo("🏢", size="large")
 # Custom Responsive CSS Injection
 st.markdown("""
     <style>
+    /* 🚫 Definitively hide the entire top header container, share, and github buttons */
+        header { visibility: hidden !important; }
+        [data-testid="stDecoration"] { display: none !important; }
+        div[data-testid="stToolbar"] { display: none !important; }
+        div[data-testid="stStatusWidget"] { visibility: hidden !important; }
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
         
         html, body, [data-testid="stWidgetLabel"], .main-title, .stTabs {
