@@ -23,14 +23,14 @@ st.logo("🏢", size="large")
 # Custom Responsive CSS Injection
 st.markdown("""
     <style>
-    /* 1. Show the header wrapper so the sidebar arrow toggle functions normally */
+    /* 1. Ensure the header background is visible so the left-side sidebar arrow shows up */
         header { visibility: visible !important; background: transparent !important; }
         
-        /* 2. Target and destroy ONLY the right-side cloud toolbar buttons (Share, GitHub, Edit) */
-        [data-testid="stAppHeaderToobar"] { display: none !important; }
-        div[data-testid="stToolbar"] { display: none !important; }
+        /* 2. Disappear the specific container holding the Share, GitHub, and Edit tools */
+        [data-testid="stAppHeaderToolbar"] { display: none !important; visibility: hidden !important; }
+        div[data-testid="stToolbar"] { display: none !important; visibility: hidden !important; }
         
-        /* 3. Hide the colorful decorative line at the absolute top of the screen */
+        /* 3. Hide the colored border decoration line at the absolute top of the page */
         [data-testid="stDecoration"] { display: none !important; }
         
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
