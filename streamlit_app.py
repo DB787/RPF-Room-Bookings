@@ -74,7 +74,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">RPF Room Bookings</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
 # Public Rooms List
 PUBLIC_ROOMS = [
