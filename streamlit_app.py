@@ -80,7 +80,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
 
 # Layout columns for centering
-col1, col2, col3 = st.columns([1, 2, 1])
+col1, col2, col3 = st.columns([5, 1, 5])
 
 with col2:
     if os.path.exists(LOGO_PATH):
