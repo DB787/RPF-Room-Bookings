@@ -77,7 +77,7 @@ st.markdown("""
 
 # Get the directory where this current script (app.py) actually lives
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGO_PATH = os.path.join(SCRIPT_DIR, "logo.png")
+LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
 
 # Layout columns for centering
 col1, col2, col3 = st.columns([1, 2, 1])
