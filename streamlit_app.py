@@ -36,10 +36,10 @@ st.markdown("""
             visibility: hidden !important;
         }
         
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+        @import url('https://fonts.cdnfonts.com/css/glacial-indifference');
         
         html, body, [data-testid="stWidgetLabel"], .main-title, .stTabs {
-            font-family: 'Montserrat', sans-serif !important;
+            font-family: 'Glacial Indifference', sans-serif !important;
         }
         
         .main-title {
