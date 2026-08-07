@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import datetime
 from supabase import create_client, Client
 from streamlit_calendar import calendar
@@ -74,13 +75,20 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 1. Create 3 columns (outer columns flex to push content to the middle)
+# Get the directory where this current script (app.py) actually lives
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGO_PATH = os.path.join(SCRIPT_DIR, "logo.png")
+
+# Layout columns for centering
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-    # Image centered above
-    st.image("chhlogo.png", use_container_width=True)
-    st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
+    if os.path.exists(LOGO_PATH):
+        st.image(LOGO_PATH, use_container_width=True)
+    else:
+        st.error(f"Image not found at path: {LOGO_PATH}")
+        
+st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
 # Public Rooms List
 PUBLIC_ROOMS = [
