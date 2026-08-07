@@ -17,7 +17,7 @@ supabase = init_supabase()
 # ==========================================
 # 2. PAGE CONFIGURATION & VISUAL THEME
 # ==========================================
-st.set_page_config(page_title="RPF Room Bookings", layout="wide")
+st.set_page_config(page_title="CHH Room Bookings", layout="wide")
 st.logo("🏢", size="large")
 
 # Custom Responsive CSS Injection
