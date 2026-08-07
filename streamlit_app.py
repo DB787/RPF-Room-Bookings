@@ -511,37 +511,63 @@ if show_admin and tab2 is not None:
 
         st.markdown("---")
         
-        # Quick SMS Text Dispatcher
-        st.markdown("### 💬 Contact Event Booker")
-        with st.expander("Click to open Quick Text Portal"):
-            all_current = supabase.table("bookings").select("*").execute()
-            current_data = all_current.data if all_current else []
-            
-            if not current_data:
-                st.info("No bookings found to contact.")
-            else:
-                contact_options = {
-                    f"{ev['booking_date']} | {ev['user_name']} ({ev['user_email']})": ev 
-                    for ev in current_data if ev['user_email'] and ev['user_email'] != "Admin Blockout"
-                }
-                
-                if not contact_options:
-                    st.info("No custom user phone entries found to text.")
-                else:
-                    selected_contact = st.selectbox("Who do you want to message?", list(contact_options.keys()))
-                    sms_target = contact_options[selected_contact]
-                    
-                    default_msg = f"Hi, regarding your booking for '{sms_target['user_name'].split(' (')[0]}' on {sms_target['booking_date']}: "
-                    sms_body = st.text_area("Write your text message here:", value=default_msg)
-                    
-                    clean_phone = "".join(filter(str.isdigit, sms_target['user_email']))
-                    import urllib.parse
-                    encoded_text = urllib.parse.quote(sms_body)
-                    
-                    sms_url = f"sms:{clean_phone}?&body={encoded_text}"
-                    st.markdown(f'<a href="{sms_url}" class="sms-btn">📱 Send Text </a>', unsafe_allow_html=True)
+        import urllib.parse
+import streamlit as st
 
-        st.markdown("---")
+# Quick SMS Text Dispatcher
+st.markdown("### 💬 Contact Event Booker")
+
+with st.expander("Click to open Quick Text Portal"):
+    all_current = supabase.table("bookings").select("*").execute()
+    current_data = all_current.data if all_current else []
+
+    if not current_data:
+        st.info("No bookings found to contact.")
+    else:
+        contact_options = {
+            f"{ev['booking_date']} | {ev.get('user_name', 'Guest')} ({ev.get('user_email', 'No Email')})": ev
+            for ev in current_data
+            if ev.get("user_email") != "Admin Blockout"
+        }
+
+        if not contact_options:
+            st.info("No custom user entries found to text.")
+        else:
+            selected_contact = st.selectbox(
+                "Who do you want to message?", list(contact_options.keys())
+            )
+            sms_target = contact_options[selected_contact]
+
+            # Fetch phone number directly using your table's column name
+            phone_raw = sms_target.get("user_email", "") # or your phone column
+            clean_phone = "".join(filter(str.isdigit, str(phone_raw)))
+
+            default_msg = f"Hi, regarding your booking for '{sms_target.get('user_name', '')}' on {sms_target.get('booking_date', '')}: "
+
+            # 1. We assign a dynamic key using the selected contact
+            # This forces the text area to update whenever you select a new person
+            text_key = f"msg_{selected_contact}"
+
+            sms_body = st.text_area(
+                "Write your text message here:", 
+                value=default_msg,
+                key=text_key
+            )
+
+            if not clean_phone:
+                st.warning("⚠️ No valid phone number found for this booking.")
+            else:
+                # 2. Encode whatever is currently inside sms_body
+                encoded_text = urllib.parse.quote(sms_body)
+                
+                sms_url = f"sms:{clean_phone}?body={encoded_text}"
+
+                st.markdown(
+                    f'<a href="{sms_url}" class="sms-btn" target="_blank">📱 Send Text</a>',
+                    unsafe_allow_html=True,
+                )
+
+st.markdown("---")
         
        # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP (OPTIMIZED)
         st.markdown("### 🗑️ Delete Live Events")
