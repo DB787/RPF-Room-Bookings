@@ -83,9 +83,6 @@ LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
 if os.path.exists(LOGO_PATH):
     st.logo(LOGO_PATH, icon_image=LOGO_PATH)
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
-
 # Convert image to base64 string
 def get_image_base64(path):
     with open(path, "rb") as image_file:
@@ -102,11 +99,6 @@ if os.path.exists(LOGO_PATH):
         """,
         unsafe_allow_html=True,
     )
-
-st.markdown(
-    "<h1 style='text-align: center;'>Room Booking System</h1>",
-    unsafe_allow_html=True,
-)
 
 st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
