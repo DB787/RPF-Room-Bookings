@@ -570,7 +570,7 @@ with st.expander("Click to open Quick Text Portal"):
 st.markdown("---")
         
        # DATABASE DATA CLEANUP ENGINE WITH BATCH CLEANUP (OPTIMIZED)
-        st.markdown("### 🗑️ Delete Live Events")
+    st.markdown("### 🗑️ Delete Live Events")
         with st.expander("Click to view full calendar cleanup deck", expanded=True):
             all_approved = supabase.table("bookings").select("*").eq("status", "Approved").execute()
             approved_list = sort_events_engine(all_approved.data) if all_approved else []
