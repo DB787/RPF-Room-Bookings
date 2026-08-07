@@ -79,7 +79,7 @@ col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
     # Image centered above
-    st.image("logo.png", use_container_width=True)
+    st.image("C.GOLD CHH LOGO.svg", use_container_width=True)
     st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
 # Public Rooms List
