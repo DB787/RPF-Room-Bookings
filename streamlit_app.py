@@ -84,7 +84,7 @@ col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
     if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, use_container_width=120)
+        st.image(LOGO_PATH, use_container_width=70)
     else:
         st.error(f"Image not found at path: {LOGO_PATH}")
         
