@@ -75,18 +75,12 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Get the directory where this current script (app.py) actually lives
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
 
-# Layout columns for centering
-col1, col2, col3 = st.columns([5, 1, 5])
-
-with col2:
-    if os.path.exists(LOGO_PATH):
-        st.image(LOGO_PATH, use_container_width=20)
-    else:
-        st.error(f"Image not found at path: {LOGO_PATH}")
+# Use st.logo at the top of the sidebar/app
+if os.path.exists(LOGO_PATH):
+    st.logo(LOGO_PATH, icon_image=LOGO_PATH)
         
 st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
