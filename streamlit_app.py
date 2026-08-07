@@ -74,7 +74,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
+# 1. Create 3 columns (outer columns flex to push content to the middle)
+col1, col2, col3 = st.columns([1, 2, 1])
+
+with col2:
+    # Image centered above
+    st.image("logo.png", use_container_width=True)
+    st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
 # Public Rooms List
 PUBLIC_ROOMS = [
