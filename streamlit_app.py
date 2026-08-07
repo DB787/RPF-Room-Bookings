@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import base64
 import datetime
 from supabase import create_client, Client
 from streamlit_calendar import calendar
@@ -81,7 +82,32 @@ LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
 # Use st.logo at the top of the sidebar/app
 if os.path.exists(LOGO_PATH):
     st.logo(LOGO_PATH, icon_image=LOGO_PATH)
-        
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+LOGO_PATH = os.path.join(SCRIPT_DIR, "chhgold.png")
+
+# Convert image to base64 string
+def get_image_base64(path):
+    with open(path, "rb") as image_file:
+        return base64.b64encode(image_file.read()).decode()
+
+if os.path.exists(LOGO_PATH):
+    img_b64 = get_image_base64(LOGO_PATH)
+    # Change 'width: 80px' below to whatever size you prefer (e.g., 60px, 100px)
+    st.markdown(
+        f"""
+        <div style="text-align: center; margin-bottom: 10px;">
+            <img src="data:image/png;base64,{img_b64}" style="width: 80px; height: auto;">
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+st.markdown(
+    "<h1 style='text-align: center;'>Room Booking System</h1>",
+    unsafe_allow_html=True,
+)
+
 st.markdown('<h1 class="main-title">CHH Room Bookings</h1>', unsafe_allow_html=True)
 
 # Public Rooms List
