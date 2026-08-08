@@ -504,10 +504,15 @@ if show_admin and tab2 is not None:
                     if col_app.button("Approve", key=f"app_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Approved"}).eq("id", pb['id']).execute()
                         st.session_state.admin_action_msg = f"✅ Approved request from '{pb['user_name']}' on {parsed_date}."
+                        msg = f"Hi {booking['user_name']}, your booking for '{booking['room_name']}' on {booking['booking_date']} has been approved!"
+                        st.session_state[f"auto_sms_{booking['id']}"] = msg
                         st.rerun()
+                        
                     if col_rej.button("Reject", key=f"rej_{pb['id']}"):
                         supabase.table("bookings").update({"status": "Rejected"}).eq("id", pb['id']).execute()
                         st.session_state.admin_action_msg = f"❌ Rejected request from '{pb['user_name']}' on {parsed_date}."
+                        msg = f"Hi {booking['user_name']}, unfortunately we are unable to approve your booking for '{booking['room_name']}' on {booking['booking_date']}."
+                        st.session_state[f"auto_sms_{booking['id']}"] = msg
                         st.rerun()
 
         st.markdown("---")
